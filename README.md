@@ -1,3 +1,5 @@
+<img src="https://github.com/Macho0x/quantamania-v/blob/main/QUANTAMANIA.png" alt="Alt text"/>
+
 # V Language Technical Indicators Library
 
 1. main.v = examples of how to use the library
