@@ -1,3 +1,5 @@
+<img src="https://github.com/Macho0x/quantamania-v/blob/main/QUANTAMANIA.png" alt="Quantamania V - Technical Indicators Library"/>
+
 # V Language Technical Indicators Library
 
 A comprehensive, high-performance technical analysis library for the V programming language, featuring 66 technical indicators with type-safe configuration, comprehensive testing, and excellent performance.
@@ -122,6 +124,7 @@ vlang-math/
 - **Consistent API** across all indicators
 - **Comprehensive documentation** with examples
 - **Easy integration** into existing V projects
+<<<<<<< HEAD
 
 ## Quick Start
 
@@ -212,3 +215,5 @@ Recent benchmark results (1000 iterations each):
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+=======
+>>>>>>> 7dea376fb0fd86509f0ef69139a316c8f67ba72a
