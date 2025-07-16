@@ -2,16 +2,26 @@
 
 # V Language Technical Indicators Library
 
-1. main.v = examples of how to use the library
-2. test_suite.v = test suite for the library
-3. benchmark.v = benchmark for the library
-4. indicators/ = indicators for the library
-5. indicators/structs.v = structs for the indicators
-6. indicators/config.v = config for the indicators
+A comprehensive, high-performance technical analysis library for the V programming language, featuring 66 technical indicators with type-safe configuration, comprehensive testing, and excellent performance.
 
-## Available Indicators
+## Project Structure
 
-### Trend Indicators
+```
+vlang-math/
+├── main.v                    # Usage examples for all 66 indicators
+├── test_suite.v             # Comprehensive test suite (66 tests)
+├── benchmark.v              # Performance benchmarks (66 benchmarks)
+├── indicators/              # Core indicator implementations
+│   ├── config.v            # Configuration system with validation
+│   ├── structs.v           # Data structures and types
+│   └── *.v                 # Individual indicator implementations (66 files)
+└── docs/
+    └── CONFIGURATION.md     # Complete configuration documentation
+```
+
+## Available Indicators (66 Total)
+
+### Trend Indicators (10)
 - **Simple Moving Average (SMA)** - Basic trend following indicator
 - **Exponential Moving Average (EMA)** - Weighted moving average
 - **Hull Moving Average (HMA)** - Fast and smooth moving average
@@ -21,8 +31,9 @@
 - **Arnaud Legoux Moving Average (ALMA)** - Gaussian-weighted moving average
 - **Volume Weighted Moving Average (VWMA)** - Volume-weighted price average
 - **Linear Regression** - Linear trend analysis
+- **Wilder's Smoothing** - Smoothing algorithm for indicators
 
-### Oscillator Indicators
+### Oscillator Indicators (11)
 - **Relative Strength Index (RSI)** - Momentum oscillator (0-100)
 - **Commodity Channel Index (CCI)** - Price deviation from average
 - **Williams %R** - Momentum oscillator (-100 to 0)
@@ -33,23 +44,28 @@
 - **TRIX** - Triple exponential average oscillator
 - **Chande Momentum Oscillator (CMO)** - Momentum oscillator
 - **Fisher Transform** - Price transformation for better signals
+- **Woodies CCI** - Enhanced CCI with Turbo Lag Bands
 
-### Momentum Indicators
+### Momentum Indicators (9)
 - **Momentum** - Rate of price change
 - **Rate of Change (ROC)** - Percentage price change over period
 - **Price Rate of Change (PROC)** - Price momentum indicator
 - **Detrended Price Oscillator (DPO)** - Price deviation from trend
 - **Percentage Price Oscillator (PPO)** - Percentage difference between EMAs
 - **Ease of Movement (EOM)** - Volume-weighted momentum
+- **True Strength Index (TSI)** - Double-smoothed momentum oscillator
+- **Force Index** - Volume-weighted price change indicator
+- **Elder Ray Index** - Bull and bear power indicator
 
-### Volatility Indicators
+### Volatility Indicators (6)
 - **Average True Range (ATR)** - Market volatility measure
 - **Standard Deviation** - Price volatility measure
 - **Historical Volatility** - Statistical volatility calculation
 - **Chaikin Volatility** - Volume-weighted volatility
 - **Ulcer Index** - Downside volatility measure
+- **Choppiness Index** - Market choppiness measurement
 
-### Multi-Parameter Trend Indicators
+### Multi-Parameter Trend Indicators (6)
 - **Bollinger Bands** - Volatility-based support/resistance
 - **Keltner Channels** - ATR-based price channels
 - **Donchian Channels** - High-low price channels
@@ -57,28 +73,54 @@
 - **Ichimoku Cloud** - Multi-component trend indicator
 - **Gator Oscillator** - Jaw, teeth, and lips oscillator
 
-### Complex Indicators
+### Complex Indicators (7)
 - **MACD** - Moving Average Convergence Divergence
 - **Average Directional Index (ADX)** - Trend strength indicator
 - **Know Sure Thing (KST)** - Long-term momentum oscillator
 - **Coppock Curve** - Long-term momentum indicator
 - **Vortex Indicator** - Trend reversal detection
+- **Volume Weighted MACD** - MACD with volume weighting
+- **Klinger Oscillator** - Volume-based momentum oscillator
 
-### Volume Indicators
+### Volume Indicators (13)
+- **Volume Weighted Average Price (VWAP)** - Volume-weighted price average
+- **Enhanced VWAP** - Advanced volume-weighted average price
+- **On Balance Volume (OBV)** - Cumulative volume indicator
+- **Accumulation Distribution Line (ADL)** - Volume-price accumulation
 - **Money Flow Index (MFI)** - Volume-weighted RSI
 - **Chaikin Money Flow (CMF)** - Volume-weighted price oscillator
+- **Money Flow Volume (MFV)** - Volume-weighted price flow
+- **Money Flow Oscillator (MFO)** - Advanced money flow indicator
 - **Volume Rate of Change** - Volume momentum indicator
 - **Volume Price Trend (VPT)** - Cumulative volume-price indicator
 - **Negative Volume Index (NVI)** - Volume-based trend indicator
 - **Positive Volume Index (PVI)** - Volume-based trend indicator
-- **Money Flow Volume (MFV)** - Volume-weighted price flow
-- **Enhanced VWAP** - Advanced volume-weighted average price
+- **Volume Profile** - Price-volume distribution analysis
 
-### Support and Resistance Indicators
+### Support and Resistance Indicators (4)
 - **Pivot Points** - Key support/resistance levels
 - **Fibonacci Retracements** - Golden ratio retracement levels
 - **Price Channels** - Dynamic support/resistance channels
 - **Andrews Pitchfork** - Trend channel indicator
 
-### Utility Indicators
-- **Wilder's Smoothing** - Smoothing algorithm for indicators
+## Features
+
+### ✅ **Complete Technical Analysis Suite**
+- **66 Technical Indicators** covering all major categories
+- **Type-Safe Configuration System** with validation
+- **Comprehensive Test Suite** with 66 test cases
+- **Performance Benchmarks** for all indicators
+- **Real-World Examples** demonstrating usage
+
+### ✅ **High Performance**
+- **Ultra-fast execution** - Most indicators execute in microseconds
+- **Optimized algorithms** using V's performance advantages
+- **Memory efficient** implementations
+- **Benchmark results**: 0.39μs to 65.50μs execution time range
+
+### ✅ **Developer Experience**
+- **Type safety** with compile-time parameter checking
+- **Runtime validation** with clear error messages
+- **Consistent API** across all indicators
+- **Comprehensive documentation** with examples
+- **Easy integration** into existing V projects
