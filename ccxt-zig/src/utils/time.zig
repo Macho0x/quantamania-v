@@ -1,5 +1,10 @@
 const std = @import("std");
 
+// Get current timestamp in milliseconds
+pub fn now() i64 {
+    return std.time.milliTimestamp();
+}
+
 // Timestamp utilities for handling timestamps in milliseconds
 pub const TimeUtils = struct {
     // Unix epoch (seconds) to milliseconds conversion
@@ -26,7 +31,7 @@ pub const TimeUtils = struct {
     }
     
     // ISO 8601 string to milliseconds
-    pub fn ISO8601ToMs(allocator: std.mem.Allocator, iso8601_str: []const u8) !i64 {
+    pub fn ISO8601ToMs(_: std.mem.Allocator, iso8601_str: []const u8) !i64 {
         // Use simple parsing - in production, use a proper RFC3339 parser
         var timestamp: i64 = 0;
         
@@ -150,16 +155,16 @@ pub const TimeFrame = enum {
 pub const Duration = struct {
     milliseconds: i64,
     
-    pub fn fromMinutes(minutes: i64) Duration {
-        return .{ .milliseconds = minutes * 60 * 1000 };
+    pub fn fromMinutes(mins: i64) Duration {
+        return .{ .milliseconds = mins * 60 * 1000 };
     }
     
-    pub fn fromHours(hours: i64) Duration {
-        return .{ .milliseconds = hours * 60 * 60 * 1000 };
+    pub fn fromHours(hrs: i64) Duration {
+        return .{ .milliseconds = hrs * 60 * 60 * 1000 };
     }
     
-    pub fn fromDays(days: i64) Duration {
-        return .{ .milliseconds = days * 24 * 60 * 60 * 1000 };
+    pub fn fromDays(dys: i64) Duration {
+        return .{ .milliseconds = dys * 24 * 60 * 60 * 1000 };
     }
     
     pub fn minutes(self: Duration) i64 {

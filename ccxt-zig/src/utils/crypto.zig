@@ -28,7 +28,7 @@ pub fn md5(data: []const u8) ![16]u8 {
 // Base64 encoding
 pub fn base64Encode(allocator: std.mem.Allocator, data: []const u8) ![]u8 {
     const encoded_len = std.base64.standard.Encoder.calcSize(data.len);
-    var encoded = try allocator.alloc(u8, encoded_len);
+    const encoded = try allocator.alloc(u8, encoded_len);
     errdefer allocator.free(encoded);
     
     _ = std.base64.standard.Encoder.encode(encoded, data);
@@ -40,7 +40,7 @@ pub fn base64Decode(allocator: std.mem.Allocator, encoded: []const u8) ![]u8 {
     const decoded_len = std.base64.standard.Decoder.calcSizeForSlice(encoded) catch |err| {
         return err;
     };
-    var decoded = try allocator.alloc(u8, decoded_len);
+    const decoded = try allocator.alloc(u8, decoded_len);
     errdefer allocator.free(decoded);
     
     std.base64.standard.Decoder.decode(decoded, encoded) catch |err| {
@@ -53,7 +53,7 @@ pub fn base64Decode(allocator: std.mem.Allocator, encoded: []const u8) ![]u8 {
 // URL-safe Base64 encoding
 pub fn base64UrlEncode(allocator: std.mem.Allocator, data: []const u8) ![]u8 {
     const encoded_len = std.base64.url_safe_no_pad.Encoder.calcSize(data.len);
-    var encoded = try allocator.alloc(u8, encoded_len);
+    const encoded = try allocator.alloc(u8, encoded_len);
     errdefer allocator.free(encoded);
     
     _ = std.base64.url_safe_no_pad.Encoder.encode(encoded, data);
@@ -65,7 +65,7 @@ pub fn base64UrlDecode(allocator: std.mem.Allocator, encoded: []const u8) ![]u8 
     const decoded_len = std.base64.url_safe_no_pad.Decoder.calcSizeForSlice(encoded) catch |err| {
         return err;
     };
-    var decoded = try allocator.alloc(u8, decoded_len);
+    const decoded = try allocator.alloc(u8, decoded_len);
     errdefer allocator.free(decoded);
     
     std.base64.url_safe_no_pad.Decoder.decode(decoded, encoded) catch |err| {
@@ -78,7 +78,7 @@ pub fn base64UrlDecode(allocator: std.mem.Allocator, encoded: []const u8) ![]u8 
 // Hex encoding
 pub fn hexEncode(allocator: std.mem.Allocator, data: []const u8) ![]u8 {
     const hex_len = data.len * 2;
-    var hex = try allocator.alloc(u8, hex_len);
+    const hex = try allocator.alloc(u8, hex_len);
     errdefer allocator.free(hex);
     
     _ = std.fmt.bufPrint(hex, "{x}", .{std.fmt.fmtSliceHexLower(data)}) catch |err| {

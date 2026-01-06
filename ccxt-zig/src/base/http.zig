@@ -173,8 +173,6 @@ pub const HttpClient = struct {
         body: ?[]const u8,
         attempt: u32,
     ) !HttpResponse {
-        const start_time = std.time.milliTimestamp();
-        
         if (self.enable_logging) {
             std.debug.print("HTTP {s} {s} (attempt {d})\n", .{ method, url, attempt + 1 });
             if (headers) |h| {
@@ -189,7 +187,6 @@ pub const HttpClient = struct {
         }
         
         const result = self.executeOnce(method, url, headers, body) catch |err| {
-            const end_time = std.time.milliTimestamp();
             
             if (attempt < self.retry_config.max_attempts - 1 and 
                 errors.RetryClassifier.shouldRetry(convertToExchangeError(err), 0)) {
@@ -206,8 +203,8 @@ pub const HttpClient = struct {
             return err;
         };
         
-        if (result.status >= 500 and result.status < 600) and 
-           attempt < self.retry_config.max_attempts - 1 {
+        if ((result.status >= 500 and result.status < 600) and 
+           attempt < self.retry_config.max_attempts - 1) {
             const delay_ms = self.retry_config.calculateDelay(attempt + 1);
             
             if (self.enable_logging) {
@@ -219,7 +216,7 @@ pub const HttpClient = struct {
             return self.executeWithRetry(method, url, headers, body, attempt + 1);
         }
         
-        if (result.status == 429) and attempt < self.retry_config.max_attempts - 1 {
+        if ((result.status == 429) and attempt < self.retry_config.max_attempts - 1) {
             const delay_ms = @max(self.retry_config.calculateDelay(attempt + 1), 60000); // Min 60s for rate limit
             
             if (self.enable_logging) {
@@ -265,19 +262,18 @@ pub const HttpClient = struct {
             }
         }
         
-        const payload = body orelse "";
         const http_method = convertMethod(method);
         
-        var request = try self.http_client.open(http_method, uri, req_headers, .{ .connection = .keep_alive, .max_redirects = 5 });
-        defer request.deinit();
+        var req = try self.http_client.open(http_method, uri, req_headers, .{ .connection = .keep_alive, .max_redirects = 5 });
+        defer req.deinit();
         
-        request.transfer_encoding = .chunked;
-        try request.send();
-        try request.finish();
-        try request.wait();
+        req.transfer_encoding = .chunked;
+        try req.send();
+        try req.finish();
+        try req.wait();
         
-        const response = request.response;
-        const body_reader = request.reader();
+        const response = req.response;
+        const body_reader = req.reader();
         
         const body_content = try body_reader.readAllAlloc(self.allocator, 1024 * 1024 * 10); // 10MB max
         errdefer self.allocator.free(body_content);
@@ -306,8 +302,6 @@ pub const HttpClient = struct {
             try response_headers.put(key_copy, value_copy);
         }
         
-        const now = std.time.milliTimestamp();
-        
         return HttpResponse{
             .status = @intFromEnum(response.status),
             .headers = response_headers,
@@ -315,7 +309,7 @@ pub const HttpClient = struct {
             .content_length = response.content_length,
             .content_encoding = if (response.getContentEncoding()) |enc| 
                 try self.allocator.dupe(u8, enc) else null,
-            .request_duration_ms = now - start_time,
+            .request_duration_ms = 0,
             .timing_start = 0, // Set to appropriate values if needed
             .timing_end = 0,
         };

@@ -71,11 +71,15 @@ pub const OauthManager = struct {
     
     // Store token
     pub fn storeToken(self: *OauthManager, token: OAuthToken) !void {
-        if (self.storage_path) |storage| _ = std.json.stringify(token, .{}, std.fs.cwd().createFile(storage, .{})?.writer());
+        if (self.storage_path) |storage| {
+            const file = try std.fs.cwd().createFile(storage, .{});
+            defer file.close();
+            _ = try std.json.stringify(token, .{}, file.writer());
+        }
     }
     
     // Load token
-    pub fn loadToken(self: *OauthManager, token: *OAuthToken) !bool {
+    pub fn loadToken(self: *OauthManager, _: *OAuthToken) !bool {
         if (self.storage_path) |storage| {
             const file = std.fs.cwd().openFile(storage, .{}) catch return false;
             defer file.close();
@@ -131,7 +135,7 @@ pub const ExchangeAuth = struct {
     }
     
     // Binance authentication: X-MBX-APIKEY + HMAC-SHA256
-    pub fn binanceAuth(self: *ExchangeAuth, config: AuthConfig, method: []const u8, url_all: []const u8, body: ?[]const u8, headers: *std.StringHashMap([]const u8)) !void {
+    pub fn binanceAuth(_: *ExchangeAuth, config: AuthConfig, method: []const u8, url_all: []const u8, body: ?[]const u8, headers: *std.StringHashMap([]const u8)) !void {
         if (config.apiKey) |key| {
             try headers.put("X-MBX-APIKEY", key);
         }
@@ -145,7 +149,7 @@ pub const ExchangeAuth = struct {
     }
     
     // Kraken authentication: API-Key + API-Sign (SHA256 of nonce+postdata)
-    pub fn krakenAuth(self: *ExchangeAuth, config: AuthConfig, method: []const u8, url: []const u8, body: ?[]const u8, headers: *std.StringHashMap([]const u8)) !void {
+    pub fn krakenAuth(self: *ExchangeAuth, config: AuthConfig, _: []const u8, _: []const u8, body: ?[]const u8, headers: *std.StringHashMap([]const u8)) !void {
         if (config.apiKey) |key| {
             try headers.put("API-Key", key);
         }
@@ -210,7 +214,7 @@ pub const ExchangeAuth = struct {
     }
     
     // OKX authentication: OK-ACCESS-KEY + OK-ACCESS-SIGN + OK-ACCESS-TIMESTAMP
-    pub fn okxAuth(self: *ExchangeAuth, config: AuthConfig, method: []const u8, url: []const u8, body: ?[]const u8, headers: *std.StringHashMap([]const u8)) !void {
+    pub fn okxAuth(self: *ExchangeAuth, config: AuthConfig, method: []const u8, url_path: []const u8, body: ?[]const u8, headers: *std.StringHashMap([]const u8)) !void {
         if (config.apiKey) |key| {
             try headers.put("OK-ACCESS-KEY", key);
         }
@@ -225,7 +229,7 @@ pub const ExchangeAuth = struct {
             
             try message.appendSlice(timestamp);
             try message.appendSlice(method);
-            try message.appendSlice(url);
+            try message.appendSlice(url_path);
             
             if (body) |b| {
                 try message.appendSlice(b);
@@ -263,11 +267,11 @@ pub const ExchangeAuth = struct {
             const params = if (query_start) |pos| url_all[pos..] else "";
             
             try message.appendSlice(params);
-            try message.appendSlice(try switch (method) {
-                "GET", "DELETE" => "",
-                "POST", "PUT" => body orelse "",
-                else => "",
-            });
+            if (std.mem.eql(u8, method, "POST") or std.mem.eql(u8, method, "PUT")) {
+                if (body) |b| {
+                    try message.appendSlice(b);
+                }
+            }
             
             const signature = try crypto.hmacSha256Hex(secret, message.items);
             
@@ -300,21 +304,21 @@ pub const AuthManager = struct {
     }
     
     // Generate auth headers for a specific exchange
-    pub fn generateHeaders(self: *AuthManager, exchange: []const u8, method: []const u8, url: []const u8, body: ?[]const u8) !std.StringHashMap([]const u8) {
+    pub fn generateHeaders(self: *AuthManager, exchange: []const u8, method: []const u8, url_path: []const u8, body: ?[]const u8) !std.StringHashMap([]const u8) {
         var headers = std.StringHashMap([]const u8).init(self.allocator);
         
         const exchange_auth = ExchangeAuth.init(self.allocator);
         
         if (std.mem.eql(u8, exchange, "binance")) {
-            try exchange_auth.binanceAuth(self.config, method, url, body, &headers);
+            try exchange_auth.binanceAuth(self.config, method, url_path, body, &headers);
         } else if (std.mem.eql(u8, exchange, "kraken")) {
-            try exchange_auth.krakenAuth(self.config, method, url, body, &headers);
+            try exchange_auth.krakenAuth(self.config, method, url_path, body, &headers);
         } else if (std.mem.eql(u8, exchange, "coinbase")) {
-            try exchange_auth.coinbaseAuth(self.config, method, url, body, &headers);
+            try exchange_auth.coinbaseAuth(self.config, method, url_path, body, &headers);
         } else if (std.mem.eql(u8, exchange, "okx")) {
-            try exchange_auth.okxAuth(self.config, method, url, body, &headers);
+            try exchange_auth.okxAuth(self.config, method, url_path, body, &headers);
         } else if (std.mem.eql(u8, exchange, "bybit")) {
-            try exchange_auth.bybitAuth(self.config, method, url, body, &headers);
+            try exchange_auth.bybitAuth(self.config, method, url_path, body, &headers);
         }
         
         return headers;
