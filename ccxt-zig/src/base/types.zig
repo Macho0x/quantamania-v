@@ -5,7 +5,7 @@ pub const Decimal = struct {
     value: i128,
     scale: u8,
     
-    pub fn fromString(allocator: std.mem.Allocator, str: []const u8) !Decimal {
+    pub fn fromString(_: std.mem.Allocator, str: []const u8) !Decimal {
         // Simple implementation - in production, use a proper decimal library
         const parsed = try std.fmt.parseFloat(f64, str);
         return Decimal{
@@ -144,7 +144,7 @@ pub fn formatPrice(price: Decimal, precision: u8) []const u8 {
 }
 
 // Parse trading pair symbol
-pub fn parsePair(allocator: std.mem.Allocator, symbol: []const u8) !struct { base: []const u8, quote: []const u8 } {
+pub fn parsePair(_: std.mem.Allocator, symbol: []const u8) !struct { base: []const u8, quote: []const u8 } {
     const delimiter = "/";
     var it = std.mem.split(u8, symbol, delimiter);
     

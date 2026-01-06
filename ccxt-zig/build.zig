@@ -15,7 +15,10 @@ pub fn build(b: *std.Build) void {
     });
     
     if (use_websocket) {
-        exe.root_module.addImport("websocket", b.path("src/websocket/ws.zig"));
+        const ws_module = b.createModule(.{
+            .root_source_file = b.path("src/websocket/ws.zig"),
+        });
+        exe.root_module.addImport("websocket", ws_module);
     }
 
     b.installArtifact(exe);
@@ -50,16 +53,4 @@ pub fn build(b: *std.Build) void {
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_lib_unit_tests.step);
     test_step.dependOn(&run_exe_unit_tests.step);
-
-    const benchmark = b.addExecutable(.{
-        .name = "benchmark",
-        .root_source_file = b.path("src/benchmark.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-    b.installArtifact(benchmark);
-
-    const run_benchmark = b.addRunArtifact(benchmark);
-    const benchmark_step = b.step("benchmark", "Run performance benchmarks");
-    benchmark_step.dependOn(&run_benchmark.step);
 }
