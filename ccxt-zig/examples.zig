@@ -178,6 +178,28 @@ pub fn createTestOrder(allocator: std.mem.Allocator) !void {
     // std.debug.print("Created order: {s}\n", .{order.id});
 }
 
+// Example 8: Hyperliquid DEX (Phase 3 Preview)
+pub fn fetchHyperliquidMarkets(allocator: std.mem.Allocator) !void {
+    var auth_config = ccxt.auth.AuthConfig{};
+    const hyperliquid = try ccxt.hyperliquid.create(allocator, auth_config);
+    defer hyperliquid.deinit();
+
+    const markets = try hyperliquid.fetchMarkets();
+    defer {
+        for (markets) |*market| market.deinit(allocator);
+        allocator.free(markets);
+    }
+
+    std.debug.print("Hyperliquid markets: {d} perpetual contracts\n", .{markets.len});
+
+    // Print first 5 markets
+    for (markets[0..@min(5, markets.len)]) |market| {
+        std.debug.print("  {s}: {s}/{s} (perpetual: {})\n", .{
+            market.id, market.base, market.quote, market.perpetual,
+        });
+    }
+}
+
 // Main entry point for examples
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
@@ -191,6 +213,7 @@ pub fn main() !void {
     // try fetchCoinbaseOrderBook(allocator);
     // try fetchBybitOHLCV(allocator);
     // try useExchangeRegistry(allocator);
+    // try fetchHyperliquidMarkets(allocator); // Phase 3 Preview
 
     std.debug.print("Examples ready to use.\n", .{});
     std.debug.print("Uncomment the function calls in main() to run each example.\n", .{});

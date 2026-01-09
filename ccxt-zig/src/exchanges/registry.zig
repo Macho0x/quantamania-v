@@ -12,6 +12,7 @@ pub const ExchangeType = enum {
     okx,
     gate,
     huobi,
+    hyperliquid,
 };
 
 // Exchange creation function type
@@ -277,6 +278,30 @@ pub fn createDefaultRegistry(allocator: std.mem.Allocator) !ExchangeRegistry {
             }
         }.f,
         .testnet_creator = null,
+    });
+
+    // Hyperliquid - DEX Support (Phase 3.5)
+    try registry.register("hyperliquid", .{
+        .info = .{
+            .name = "Hyperliquid",
+            .description = "Decentralized perpetuals exchange with wallet-based trading",
+            .doc_url = "https://docs.hyperliquid.xyz/",
+            .version = "v1",
+            .requires_api_key = false,  // Uses wallet signing instead
+            .requires_secret = false,  // Uses wallet signing instead
+            .requires_passphrase = false,
+            .testnet_supported = true,
+            .spot_supported = false,
+            .margin_supported = false,
+            .futures_supported = true,  // Perpetuals
+        },
+        .creator = struct {
+            fn f(allocator: std.mem.Allocator, auth_config: auth.AuthConfig) anyerror!*const anyopaque {
+                const hyperliquid = @import("hyperliquid.zig");
+                return try hyperliquid.create(allocator, auth_config);
+            }
+        }.f,
+        .testnet_creator = null,  // TODO: Add testnet support
     });
 
     return registry;
