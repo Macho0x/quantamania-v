@@ -56,6 +56,7 @@ pub const bybit = @import("exchanges/bybit.zig");
 pub const okx = @import("exchanges/okx.zig");
 pub const gate = @import("exchanges/gate.zig");
 pub const huobi = @import("exchanges/huobi.zig");
+pub const hyperliquid = @import("exchanges/hyperliquid.zig");
 
 // Exchange registry
 pub const registry = @import("exchanges/registry.zig");

@@ -111,14 +111,22 @@ Implemented 7 major exchanges representing ~80% of global trading volume:
 24. **Independent Reserve** - Australia/New Zealand
 25. **BTC Markets** - Australia-focused
 
+#### DEX Support (New - Priority: MEDIUM)
+26. **Hyperliquid** - Decentralized perpetuals exchange
+27. **Uniswap** - Leading DEX on Ethereum
+28. **PancakeSwap** - Leading DEX on BSC
+29. **dYdX** - Decentralized perpetuals
+30. **GMX** - Decentralized perpetuals
+
 **Implementation Plan:**
 - **Week 1-2:** Implement exchanges 1-5
 - **Week 3-4:** Implement exchanges 6-10
 - **Week 5-6:** Implement exchanges 11-20
 - **Week 7:** Implement exchanges 21-25
-- **Week 8:** Testing, documentation, benchmarks
+- **Week 8:** Implement DEX support (Hyperliquid, Uniswap, PancakeSwap)
+- **Week 9:** Testing, documentation, benchmarks
 
-**Estimated Effort:** 8 weeks, ~10,000 LOC
+**Estimated Effort:** 9 weeks, ~12,000 LOC
 
 ---
 
@@ -318,20 +326,21 @@ pub const FundingRate = struct {
 ## 📊 Phase 3 Summary
 
 ### Timeline
-- **Total Duration:** 16-20 weeks (~4-5 months)
+- **Total Duration:** 20-24 weeks (~5-6 months)
 - **Start:** After Phase 3 approval
 - **Milestones:**
   - M1 (Week 4): First 5 mid-tier exchanges
   - M2 (Week 8): WebSocket core + major exchanges
   - M3 (Week 12): All 25 mid-tier exchanges
   - M4 (Week 16): Advanced orders + margin features
-  - M5 (Week 20): Testing, docs, benchmarks complete
+  - M5 (Week 20): DEX support (Hyperliquid, Uniswap, PancakeSwap)
+  - M6 (Week 24): Testing, docs, benchmarks complete
 
 ### Code Metrics (Estimated)
-- **New Lines of Code:** ~17,500 LOC
-- **New Files:** ~50 files
+- **New Lines of Code:** ~20,000 LOC
+- **New Files:** ~60 files
 - **Test Coverage:** >80%
-- **Exchanges Total:** 32 exchanges
+- **Exchanges Total:** 35 exchanges (30 CEX + 5 DEX)
 - **Methods per Exchange:** ~25-30 methods
 
 ### Resource Requirements

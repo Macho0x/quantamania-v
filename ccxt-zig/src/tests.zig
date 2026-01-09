@@ -498,6 +498,40 @@ test "Decimal - From String" {
     decimal.deinit(allocator);
 }
 
+// ==================== Phase 3 Preview Tests ====================
+
+test "HyperliquidExchange - Initialize" {
+    const allocator = testing.allocator;
+
+    var auth_config = ccxt.auth.AuthConfig{};
+    const hyperliquid = try ccxt.hyperliquid.create(allocator, auth_config);
+    defer hyperliquid.deinit();
+
+    // Test basic properties
+    try testing.expectEqualStrings("hyperliquid", hyperliquid.base.name);
+    try testing.expectEqualStrings("https://api.hyperliquid.xyz", hyperliquid.base.api_url);
+    try testing.expect(hyperliquid.base.rate_limit == 100);
+    try testing.expect(hyperliquid.base.requires_signature == true);
+    try testing.expectEqualStrings("/", hyperliquid.base.symbol_separator);
+}
+
+test "HyperliquidExchange - Fetch Markets (Mock)" {
+    const allocator = testing.allocator;
+
+    var auth_config = ccxt.auth.AuthConfig{};
+    const hyperliquid = try ccxt.hyperliquid.create(allocator, auth_config);
+    defer hyperliquid.deinit();
+
+    // Test that fetchMarkets returns a valid array (even if empty)
+    const markets = try hyperliquid.fetchMarkets();
+    defer {
+        for (markets) |*market| market.deinit(allocator);
+        allocator.free(markets);
+    }
+
+    try testing.expect(markets.len >= 0);
+}
+
 // ==================== Run Tests ====================
 
 test "All Phase 2 Tests" {

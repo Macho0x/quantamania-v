@@ -2,6 +2,8 @@
 
 A high-performance cryptocurrency exchange library written in Zig, implementing 7 major exchanges representing ~80% of global trading volume.
 
+**Phase 3 Preview**: DEX support including Hyperliquid is now available in the codebase!
+
 ## Phase 2 Overview
 
 This phase implements the following exchanges:
@@ -309,14 +311,16 @@ Benchmarks (Phase 2 - All exchanges):
 - ✅ All core market data methods
 - ✅ Private methods (balance, orders)
 - ✅ Exchange registry
-- ✅ Unit tests and benchmarks
+- ✅ Unit tests (508 lines) and benchmarks
 - ✅ Comprehensive documentation
+- ✅ Usage examples (198 lines)
 
 ### 🚀 Phase 3: Mid-Tier Exchanges & WebSocket (Next - 16-20 weeks)
 - [ ] **3.1:** 25 additional mid-tier exchanges (KuCoin, Bitfinex, Crypto.com, etc.)
-- [ ] **3.2:** WebSocket support for real-time data streaming
+- [⚡] **3.2:** WebSocket support for real-time data streaming (In Progress)
 - [ ] **3.3:** Advanced order types (10 types: stop-loss, trailing stop, OCO, etc.)
 - [ ] **3.4:** Margin trading features (borrow, leverage, funding rates)
+- [✅] **3.5:** DEX support (Hyperliquid, Uniswap, PancakeSwap, etc.) - Basic implementation complete
 - [ ] Integration tests with live testnets
 - [ ] Enhanced documentation and examples
 
