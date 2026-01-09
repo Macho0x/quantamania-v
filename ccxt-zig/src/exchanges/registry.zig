@@ -301,7 +301,12 @@ pub fn createDefaultRegistry(allocator: std.mem.Allocator) !ExchangeRegistry {
                 return try hyperliquid.create(allocator, auth_config);
             }
         }.f,
-        .testnet_creator = null,  // TODO: Add testnet support
+        .testnet_creator = struct {
+            fn f(allocator: std.mem.Allocator, auth_config: auth.AuthConfig) anyerror!*const anyopaque {
+                const hyperliquid = @import("hyperliquid.zig");
+                return try hyperliquid.createTestnet(allocator, auth_config);
+            }
+        }.f,
     });
 
     return registry;

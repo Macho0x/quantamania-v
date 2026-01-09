@@ -11,12 +11,19 @@ pub const AuthConfig = struct {
     uid: ?[]const u8 = null,
     password: ?[]const u8 = null,
     
+    // Wallet-based authentication for DEX
+    wallet_address: ?[]const u8 = null,
+    wallet_private_key: ?[]const u8 = null,
+    wallet_connected: bool = false,
+    
     pub fn deinit(self: *AuthConfig, allocator: std.mem.Allocator) void {
         if (self.apiKey) |k| allocator.free(k);
         if (self.apiSecret) |s| allocator.free(s);
         if (self.passphrase) |p| allocator.free(p);
         if (self.uid) |u| allocator.free(u);
         if (self.password) |p| allocator.free(p);
+        if (self.wallet_address) |w| allocator.free(w);
+        if (self.wallet_private_key) |w| allocator.free(w);
     }
 };
 
