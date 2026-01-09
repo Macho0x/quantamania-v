@@ -1,0 +1,66 @@
+// CCXT-Zig: Cryptocurrency Exchange Library in Zig
+// Phase 2: Major Exchanges Implementation
+//
+// This module provides implementations for 7 major cryptocurrency exchanges:
+// - Binance, Kraken, Coinbase, Bybit, OKX, Gate.io, Huobi
+//
+// Usage:
+//   const ccxt = @import("ccxt_zig");
+//   var registry = try ccxt.ExchangeRegistry.createDefaultRegistry(allocator);
+//   defer registry.deinit();
+//
+//   if (registry.get("binance")) |binance_info| {
+//       const exchange = try binance_info.creator(allocator, auth_config);
+//       defer exchange.deinit();
+//       const markets = try exchange.fetchMarkets();
+//       // ... use exchange methods
+//   }
+
+const std = @import("std");
+
+// Version information
+pub const VERSION = "0.1.0";
+pub const PHASE = 2;
+
+// Base modules
+pub const types = @import("base/types.zig");
+pub const errors = @import("base/errors.zig");
+pub const auth = @import("base/auth.zig");
+pub const http = @import("base/http.zig");
+pub const exchange = @import("base/exchange.zig");
+
+// Utility modules
+pub const json = @import("utils/json.zig");
+pub const time = @import("utils/time.zig");
+pub const crypto = @import("utils/crypto.zig");
+pub const url = @import("utils/url.zig");
+
+// Data models
+pub const Market = @import("models/market.zig").Market;
+pub const Ticker = @import("models/ticker.zig").Ticker;
+pub const OrderBook = @import("models/orderbook.zig").OrderBook;
+pub const Order = @import("models/order.zig").Order;
+pub const OrderType = @import("models/order.zig").OrderType;
+pub const OrderSide = @import("models/order.zig").OrderSide;
+pub const OrderStatus = @import("models/order.zig").OrderStatus;
+pub const Balance = @import("models/balance.zig").Balance;
+pub const Trade = @import("models/trade.zig").Trade;
+pub const OHLCV = @import("models/ohlcv.zig").OHLCV;
+pub const Position = @import("models/position.zig").Position;
+
+// Exchange implementations
+pub const binance = @import("exchanges/binance.zig");
+pub const kraken = @import("exchanges/kraken.zig");
+pub const coinbase = @import("exchanges/coinbase.zig");
+pub const bybit = @import("exchanges/bybit.zig");
+pub const okx = @import("exchanges/okx.zig");
+pub const gate = @import("exchanges/gate.zig");
+pub const huobi = @import("exchanges/huobi.zig");
+
+// Exchange registry
+pub const registry = @import("exchanges/registry.zig");
+pub const ExchangeRegistry = registry.ExchangeRegistry;
+pub const ExchangeInfo = registry.ExchangeInfo;
+pub const ExchangeType = registry.ExchangeType;
+
+pub usingnamespace exchange;
