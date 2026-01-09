@@ -124,7 +124,6 @@ vlang-math/
 - **Consistent API** across all indicators
 - **Comprehensive documentation** with examples
 - **Easy integration** into existing V projects
-<<<<<<< HEAD
 
 ## Quick Start
 
@@ -215,5 +214,3 @@ Recent benchmark results (1000 iterations each):
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-=======
->>>>>>> 7dea376fb0fd86509f0ef69139a316c8f67ba72a

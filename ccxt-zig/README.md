@@ -297,18 +297,43 @@ Benchmarks (Phase 2 - All exchanges):
 
 ## Roadmap
 
-### Phase 2 (Complete)
+### ✅ Phase 1: Foundation (Complete)
+- ✅ Core type system and data models
+- ✅ HTTP client with retry logic
+- ✅ Authentication system
+- ✅ Error handling
+- ✅ JSON/Crypto/Time utilities
+
+### ✅ Phase 2: Major Exchanges (Complete)
 - ✅ Binance, Kraken, Coinbase, Bybit, OKX, Gate.io, Huobi
 - ✅ All core market data methods
-- ✅ Basic private methods (balance, orders)
+- ✅ Private methods (balance, orders)
 - ✅ Exchange registry
 - ✅ Unit tests and benchmarks
+- ✅ Comprehensive documentation
 
-### Phase 3 (Next)
-- 30+ mid-tier exchanges
-- WebSocket support for real-time data
-- Advanced order types
-- Margin trading features
+### 🚀 Phase 3: Mid-Tier Exchanges & WebSocket (Next - 16-20 weeks)
+- [ ] **3.1:** 25 additional mid-tier exchanges (KuCoin, Bitfinex, Crypto.com, etc.)
+- [ ] **3.2:** WebSocket support for real-time data streaming
+- [ ] **3.3:** Advanced order types (10 types: stop-loss, trailing stop, OCO, etc.)
+- [ ] **3.4:** Margin trading features (borrow, leverage, funding rates)
+- [ ] Integration tests with live testnets
+- [ ] Enhanced documentation and examples
+
+**See [docs/ROADMAP.md](docs/ROADMAP.md) for detailed Phase 3 plan**
+
+### 🔮 Phase 4: Advanced Features (Future)
+- Trading strategies framework
+- Portfolio tracking and analytics
+- Cross-exchange arbitrage
+- Smart order routing
+- DEX support
+
+## Documentation
+
+- **[Phase 3 Roadmap](docs/ROADMAP.md)** - Detailed plan for upcoming features
+- **[Project Status](docs/STATUS.md)** - Current state and metrics
+- **[Build Guide](build.zig)** - Build system configuration
 
 ## License
 
