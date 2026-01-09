@@ -1,0 +1,27 @@
+# General
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# Zig
+zig-cache/
+zig-out/
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.dylib
+
+# V
+*.exe
+*.out
+*.tmp
+vls.log
+
+# Benchmarks / logs
+*.log
