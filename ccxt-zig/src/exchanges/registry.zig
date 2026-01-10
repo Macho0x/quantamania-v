@@ -5,6 +5,7 @@ const http = @import("../base/http.zig");
 
 // Exchange type enum for registry
 pub const ExchangeType = enum {
+    // Phase 2: Major CEX (7)
     binance,
     kraken,
     coinbase,
@@ -12,7 +13,32 @@ pub const ExchangeType = enum {
     okx,
     gate,
     huobi,
+    
+    // Phase 3: Mid-Tier CEX (17)
+    kucoin,
+    bitfinex,
+    gemini,
+    bitget,
+    bitmex,
+    deribit,
+    mexc,
+    bitstamp,
+    poloniex,
+    bitrue,
+    phemex,
+    bingx,
+    xtcom,
+    coinex,
+    probit,
+    woox,
+    bitmart,
+    ascendex,
+    
+    // Phase 3: DEX (5)
     hyperliquid,
+    uniswap,
+    pancakeswap,
+    dydx,
 };
 
 // Exchange creation function type
@@ -280,6 +306,38 @@ pub fn createDefaultRegistry(allocator: std.mem.Allocator) !ExchangeRegistry {
         .testnet_creator = null,
     });
 
+    // === Phase 3: Mid-Tier CEX Exchanges ===
+    
+    try registry.register("kucoin", .{
+        .info = .{
+            .name = "KuCoin",
+            .description = "Global crypto exchange with spot, margin, and futures",
+            .doc_url = "https://docs.kucoin.com/",
+            .version = "v1",
+            .requires_api_key = true,
+            .requires_secret = true,
+            .requires_passphrase = true,
+            .testnet_supported = true,
+            .spot_supported = true,
+            .margin_supported = true,
+            .futures_supported = true,
+        },
+        .creator = struct {
+            fn f(allocator: std.mem.Allocator, auth_config: auth.AuthConfig) anyerror!*const anyopaque {
+                const kucoin = @import("kucoin.zig");
+                return try kucoin.create(allocator, auth_config);
+            }
+        }.f,
+        .testnet_creator = struct {
+            fn f(allocator: std.mem.Allocator, auth_config: auth.AuthConfig) anyerror!*const anyopaque {
+                const kucoin = @import("kucoin.zig");
+                return try kucoin.createTestnet(allocator, auth_config);
+            }
+        }.f,
+    });
+
+    // === Phase 3: DEX Exchanges ===
+    
     // Hyperliquid - DEX Support (Phase 3.5)
     try registry.register("hyperliquid", .{
         .info = .{
@@ -308,6 +366,94 @@ pub fn createDefaultRegistry(allocator: std.mem.Allocator) !ExchangeRegistry {
             }
         }.f,
     });
+
+    try registry.register("uniswap", .{
+        .info = .{
+            .name = "Uniswap",
+            .description = "Leading DEX on Ethereum with AMM model",
+            .doc_url = "https://docs.uniswap.org/",
+            .version = "v3",
+            .requires_api_key = false,
+            .requires_secret = false,
+            .requires_passphrase = false,
+            .testnet_supported = true,
+            .spot_supported = true,
+            .margin_supported = false,
+            .futures_supported = false,
+        },
+        .creator = struct {
+            fn f(allocator: std.mem.Allocator, auth_config: auth.AuthConfig) anyerror!*const anyopaque {
+                const uniswap = @import("uniswap.zig");
+                return try uniswap.create(allocator, auth_config);
+            }
+        }.f,
+        .testnet_creator = struct {
+            fn f(allocator: std.mem.Allocator, auth_config: auth.AuthConfig) anyerror!*const anyopaque {
+                const uniswap = @import("uniswap.zig");
+                return try uniswap.createTestnet(allocator, auth_config);
+            }
+        }.f,
+    });
+
+    try registry.register("pancakeswap", .{
+        .info = .{
+            .name = "PancakeSwap",
+            .description = "Leading DEX on BSC with AMM model",
+            .doc_url = "https://docs.pancakeswap.finance/",
+            .version = "v3",
+            .requires_api_key = false,
+            .requires_secret = false,
+            .requires_passphrase = false,
+            .testnet_supported = true,
+            .spot_supported = true,
+            .margin_supported = false,
+            .futures_supported = false,
+        },
+        .creator = struct {
+            fn f(allocator: std.mem.Allocator, auth_config: auth.AuthConfig) anyerror!*const anyopaque {
+                const pancakeswap = @import("pancakeswap.zig");
+                return try pancakeswap.create(allocator, auth_config);
+            }
+        }.f,
+        .testnet_creator = struct {
+            fn f(allocator: std.mem.Allocator, auth_config: auth.AuthConfig) anyerror!*const anyopaque {
+                const pancakeswap = @import("pancakeswap.zig");
+                return try pancakeswap.createTestnet(allocator, auth_config);
+            }
+        }.f,
+    });
+
+    try registry.register("dydx", .{
+        .info = .{
+            .name = "dYdX",
+            .description = "Decentralized perpetuals exchange",
+            .doc_url = "https://docs.dydx.exchange/",
+            .version = "v4",
+            .requires_api_key = false,
+            .requires_secret = false,
+            .requires_passphrase = false,
+            .testnet_supported = true,
+            .spot_supported = false,
+            .margin_supported = false,
+            .futures_supported = true,
+        },
+        .creator = struct {
+            fn f(allocator: std.mem.Allocator, auth_config: auth.AuthConfig) anyerror!*const anyopaque {
+                const dydx = @import("dydx.zig");
+                return try dydx.create(allocator, auth_config);
+            }
+        }.f,
+        .testnet_creator = struct {
+            fn f(allocator: std.mem.Allocator, auth_config: auth.AuthConfig) anyerror!*const anyopaque {
+                const dydx = @import("dydx.zig");
+                return try dydx.createTestnet(allocator, auth_config);
+            }
+        }.f,
+    });
+
+    // Note: Additional mid-tier CEX exchanges (bitfinex, gemini, bitget, etc.) 
+    // are implemented but not yet registered. They can be added as needed following
+    // the same pattern above. See src/exchanges/*.zig for implementations.
 
     return registry;
 }

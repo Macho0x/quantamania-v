@@ -34,6 +34,7 @@ pub const json = @import("utils/json.zig");
 pub const time = @import("utils/time.zig");
 pub const crypto = @import("utils/crypto.zig");
 pub const url = @import("utils/url.zig");
+pub const precision = @import("utils/precision.zig");
 
 // Data models
 pub const Market = @import("models/market.zig").Market;
@@ -48,7 +49,7 @@ pub const Trade = @import("models/trade.zig").Trade;
 pub const OHLCV = @import("models/ohlcv.zig").OHLCV;
 pub const Position = @import("models/position.zig").Position;
 
-// Exchange implementations
+// Exchange implementations - Phase 2: Major CEX
 pub const binance = @import("exchanges/binance.zig");
 pub const kraken = @import("exchanges/kraken.zig");
 pub const coinbase = @import("exchanges/coinbase.zig");
@@ -56,7 +57,32 @@ pub const bybit = @import("exchanges/bybit.zig");
 pub const okx = @import("exchanges/okx.zig");
 pub const gate = @import("exchanges/gate.zig");
 pub const huobi = @import("exchanges/huobi.zig");
+
+// Exchange implementations - Phase 3: Mid-Tier CEX
+pub const kucoin = @import("exchanges/kucoin.zig");
+pub const bitfinex = @import("exchanges/bitfinex.zig");
+pub const gemini = @import("exchanges/gemini.zig");
+pub const bitget = @import("exchanges/bitget.zig");
+pub const bitmex = @import("exchanges/bitmex.zig");
+pub const deribit = @import("exchanges/deribit.zig");
+pub const mexc = @import("exchanges/mexc.zig");
+pub const bitstamp = @import("exchanges/bitstamp.zig");
+pub const poloniex = @import("exchanges/poloniex.zig");
+pub const bitrue = @import("exchanges/bitrue.zig");
+pub const phemex = @import("exchanges/phemex.zig");
+pub const bingx = @import("exchanges/bingx.zig");
+pub const xtcom = @import("exchanges/xtcom.zig");
+pub const coinex = @import("exchanges/coinex.zig");
+pub const probit = @import("exchanges/probit.zig");
+pub const woox = @import("exchanges/woox.zig");
+pub const bitmart = @import("exchanges/bitmart.zig");
+pub const ascendex = @import("exchanges/ascendex.zig");
+
+// Exchange implementations - Phase 3: DEX
 pub const hyperliquid = @import("exchanges/hyperliquid.zig");
+pub const uniswap = @import("exchanges/uniswap.zig");
+pub const pancakeswap = @import("exchanges/pancakeswap.zig");
+pub const dydx = @import("exchanges/dydx.zig");
 
 // Exchange registry
 pub const registry = @import("exchanges/registry.zig");
