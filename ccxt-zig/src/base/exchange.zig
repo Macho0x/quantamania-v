@@ -16,7 +16,7 @@ pub const BaseExchange = struct {
     name: []const u8,
     api_url: []const u8,
     ws_url: []const u8,
-    http_client: *http.HttpClient,
+    http_client: http.HttpClient,
     auth_config: auth.AuthConfig,
 
     // Market cache
@@ -44,11 +44,11 @@ pub const BaseExchange = struct {
             self.allocator.free(m);
         }
 
+        self.http_client.deinit();
+
         self.allocator.free(self.name);
         self.allocator.free(self.api_url);
         self.allocator.free(self.ws_url);
-        self.allocator.free(self.version);
-        self.allocator.free(self.user_agent);
 
         var header_iter = self.headers.iterator();
         while (header_iter.next()) |entry| {

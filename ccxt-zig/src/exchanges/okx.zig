@@ -45,7 +45,7 @@ pub const OKXExchange = struct {
         self.passphrase = auth_config.passphrase;
         self.testnet = testnet;
 
-        const http_client = try http.HttpClient.init(allocator);
+        var http_client = try http.HttpClient.init(allocator);
         errdefer http_client.deinit();
 
         const name = try allocator.dupe(u8, "okx");

@@ -64,7 +64,7 @@ pub const KucoinExchange = struct {
         self.testnet = testnet;
         self.precision_config = precision_utils.ExchangePrecisionConfig.kucoin();
 
-        const http_client = try http.HttpClient.init(allocator);
+        var http_client = try http.HttpClient.init(allocator);
         errdefer http_client.deinit();
 
         const base_name = try allocator.dupe(u8, "kucoin");
@@ -160,10 +160,10 @@ pub const KucoinExchange = struct {
         defer self.allocator.free(url);
 
         const response = try self.base.http_client.get(url, null);
-        defer self.allocator.free(response);
+        defer response.deinit(self.allocator);
 
         var parser = json.JsonParser.init(self.allocator);
-        const parsed = try parser.parse(response);
+        const parsed = try parser.parse(response.body);
         defer parsed.deinit();
 
         const root = parsed.value;
@@ -247,7 +247,7 @@ pub const KucoinExchange = struct {
                     .base = amount_precision,
                     .quote = price_precision,
                 },
-                .info = market_data,
+                .info = null,
                 .taker = parser.getFloat(obj.get("takerFeeRate") orelse .{ .float = 0.001 }, 0.001),
                 .maker = parser.getFloat(obj.get("makerFeeRate") orelse .{ .float = 0.001 }, 0.001),
                 .percentage = true,
@@ -262,20 +262,19 @@ pub const KucoinExchange = struct {
 
     // Public API: Fetch ticker
     pub fn fetchTicker(self: *KucoinExchange, symbol: []const u8) !Ticker {
-        const market_symbol = try self.base.marketId(symbol);
-        defer self.allocator.free(market_symbol);
+        const market = self.base.findMarket(symbol) orelse return error.SymbolNotFound;
 
-        const endpoint = try std.fmt.allocPrint(self.allocator, "/api/v1/market/stats?symbol={s}", .{market_symbol});
+        const endpoint = try std.fmt.allocPrint(self.allocator, "/api/v1/market/stats?symbol={s}", .{market.id});
         defer self.allocator.free(endpoint);
 
         const url = try std.fmt.allocPrint(self.allocator, "{s}{s}", .{ self.base.api_url, endpoint });
         defer self.allocator.free(url);
 
         const response = try self.base.http_client.get(url, null);
-        defer self.allocator.free(response);
+        defer response.deinit(self.allocator);
 
         var parser = json.JsonParser.init(self.allocator);
-        const parsed = try parser.parse(response);
+        const parsed = try parser.parse(response.body);
         defer parsed.deinit();
 
         const root = parsed.value;
@@ -298,7 +297,6 @@ pub const KucoinExchange = struct {
         return Ticker{
             .symbol = symbol_copy,
             .timestamp = time.TimeUtils.now(),
-            .datetime = try time.TimeUtils.iso8601(self.allocator, time.TimeUtils.now()),
             .high = if (high > 0) high else null,
             .low = if (low > 0) low else null,
             .bid = null,
@@ -315,7 +313,7 @@ pub const KucoinExchange = struct {
             .average = null,
             .baseVolume = if (vol > 0) vol else null,
             .quoteVolume = if (volume_value > 0) volume_value else null,
-            .info = obj,
+            .info = null,
         };
     }
 
@@ -440,10 +438,10 @@ pub const KucoinExchange = struct {
         defer self.allocator.free(url);
 
         const response = try self.base.http_client.get(url, null);
-        defer self.allocator.free(response);
+        defer response.deinit(self.allocator);
 
         var parser = json.JsonParser.init(self.allocator);
-        const parsed = try parser.parse(response);
+        const parsed = try parser.parse(response.body);
         defer parsed.deinit();
 
         const root = parsed.value;
@@ -508,20 +506,22 @@ pub const KucoinExchange = struct {
 
     // Public API: Fetch trades
     pub fn fetchTrades(self: *KucoinExchange, symbol: []const u8, since: ?i64, limit: ?u32) ![]Trade {
-        const market_symbol = try self.base.marketId(symbol);
-        defer self.allocator.free(market_symbol);
+        _ = since;
+        _ = limit;
 
-        const endpoint = try std.fmt.allocPrint(self.allocator, "/api/v1/market/histories?symbol={s}", .{market_symbol});
+        const market = self.base.findMarket(symbol) orelse return error.SymbolNotFound;
+
+        const endpoint = try std.fmt.allocPrint(self.allocator, "/api/v1/market/histories?symbol={s}", .{market.id});
         defer self.allocator.free(endpoint);
 
         const url = try std.fmt.allocPrint(self.allocator, "{s}{s}", .{ self.base.api_url, endpoint });
         defer self.allocator.free(url);
 
         const response = try self.base.http_client.get(url, null);
-        defer self.allocator.free(response);
+        defer response.deinit(self.allocator);
 
         var parser = json.JsonParser.init(self.allocator);
-        const parsed = try parser.parse(response);
+        const parsed = try parser.parse(response.body);
         defer parsed.deinit();
 
         const root = parsed.value;
@@ -543,23 +543,23 @@ pub const KucoinExchange = struct {
 
                 var parser = json.JsonParser.init(self.allocator);
 
-                const sequence = parser.getString(obj.get("sequence"), "0");
+                const sequence = parser.getStringValue(obj.get("sequence"), "0");
                 const price = parser.getFloat(obj.get("price") orelse .{ .float = 0 }, 0);
                 const size = parser.getFloat(obj.get("size") orelse .{ .float = 0 }, 0);
-                const side_str = parser.getString(obj.get("side"), "buy");
+                const side_str = parser.getStringValue(obj.get("side"), "buy");
                 const timestamp = parser.getInt(obj.get("time") orelse .{ .integer = 0 }, 0) / 1000000;
 
-                const side: OrderSide = if (std.mem.eql(u8, side_str orelse "buy", "sell")) .sell else .buy;
+                const side: []const u8 = if (std.mem.eql(u8, side_str, "sell")) "sell" else "buy";
 
                 try result.append(Trade{
-                    .id = try self.allocator.dupe(u8, sequence orelse "0"),
+                    .id = try self.allocator.dupe(u8, sequence),
                     .order = null,
-                    .info = trade_obj,
+                    .info = null,
                     .timestamp = timestamp,
                     .datetime = try time.TimeUtils.iso8601(self.allocator, timestamp),
                     .symbol = try self.allocator.dupe(u8, symbol),
-                    .type = null,
-                    .side = side,
+                    .type = .spot,
+                    .side = try self.allocator.dupe(u8, side),
                     .takerOrMaker = null,
                     .price = price,
                     .amount = size,
@@ -614,12 +614,12 @@ pub const KucoinExchange = struct {
 
                 var parser = json.JsonParser.init(self.allocator);
 
-                const currency = parser.getString(obj.get("currency"), "");
+                const currency = parser.getStringValue(obj.get("currency"), "");
                 const available = parser.getFloat(obj.get("available") orelse .{ .float = 0 }, 0);
                 const holds = parser.getFloat(obj.get("holds") orelse .{ .float = 0 }, 0);
 
                 try result.append(Balance{
-                    .currency = try self.allocator.dupe(u8, currency orelse ""),
+                    .currency = try self.allocator.dupe(u8, currency),
                     .free = available,
                     .used = holds,
                     .total = available + holds,

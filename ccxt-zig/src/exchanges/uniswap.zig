@@ -54,7 +54,7 @@ pub const UniswapExchange = struct {
         // DEX precision config - 18 decimals for ERC20 tokens
         self.precision_config = precision_utils.ExchangePrecisionConfig.dex();
 
-        const http_client = try http.HttpClient.init(allocator);
+        var http_client = try http.HttpClient.init(allocator);
         const base_name = try allocator.dupe(u8, "uniswap");
         
         // Use Uniswap V3 Subgraph API
@@ -92,28 +92,119 @@ pub const UniswapExchange = struct {
     }
 
     // GraphQL query for pool data
-    fn queryPools(self: *UniswapExchange) ![]const u8 {
+    fn queryPools(self: *UniswapExchange) !http.HttpResponse {
         const query =
             \\{"query": "{ pools(first: 100, orderBy: totalValueLockedUSD, orderDirection: desc) { id token0 { id symbol decimals } token1 { id symbol decimals } feeTier liquidity sqrtPrice tick totalValueLockedUSD volumeUSD } }"}
         ;
-        
+
         const url = self.base.api_url;
-        const response = try self.base.http_client.post(url, query, null);
-        return response;
+        return self.base.http_client.post(url, null, query);
     }
 
     // DEX methods - GraphQL-based
     pub fn fetchMarkets(self: *UniswapExchange) ![]Market {
         const response = try self.queryPools();
-        defer self.allocator.free(response);
+        defer response.deinit(self.allocator);
 
         var parser = json.JsonParser.init(self.allocator);
-        const parsed = try parser.parse(response);
+        const parsed = try parser.parse(response.body);
         defer parsed.deinit();
 
-        // TODO: Parse GraphQL response and convert to Market structs
-        // For now, return empty array as placeholder
-        return try self.allocator.alloc(Market, 0);
+        const root = parsed.value;
+        const data_val = root.object.get("data") orelse return error.InvalidResponse;
+        const pools_val = data_val.object.get("pools") orelse return error.InvalidResponse;
+
+        const pools = switch (pools_val) {
+            .array => |a| a.items,
+            else => return error.InvalidResponse,
+        };
+
+        var result = std.ArrayList(Market).init(self.allocator);
+        errdefer result.deinit();
+
+        for (pools) |pool_val| {
+            const pool_obj = switch (pool_val) {
+                .object => |o| o,
+                else => continue,
+            };
+
+            const pool_id = switch (pool_obj.get("id") orelse continue) {
+                .string => |s| s,
+                else => continue,
+            };
+
+            const token0_val = pool_obj.get("token0") orelse continue;
+            const token1_val = pool_obj.get("token1") orelse continue;
+
+            const token0_obj = switch (token0_val) {
+                .object => |o| o,
+                else => continue,
+            };
+            const token1_obj = switch (token1_val) {
+                .object => |o| o,
+                else => continue,
+            };
+
+            const token0_symbol = switch (token0_obj.get("symbol") orelse continue) {
+                .string => |s| s,
+                else => continue,
+            };
+            const token1_symbol = switch (token1_obj.get("symbol") orelse continue) {
+                .string => |s| s,
+                else => continue,
+            };
+
+            const token0_id = switch (token0_obj.get("id") orelse continue) {
+                .string => |s| s,
+                else => continue,
+            };
+            const token1_id = switch (token1_obj.get("id") orelse continue) {
+                .string => |s| s,
+                else => continue,
+            };
+
+            const token0_decimals_str = switch (token0_obj.get("decimals") orelse .{ .string = "18" }) {
+                .string => |s| s,
+                .number_string => |s| s,
+                else => "18",
+            };
+            const token1_decimals_str = switch (token1_obj.get("decimals") orelse .{ .string = "18" }) {
+                .string => |s| s,
+                .number_string => |s| s,
+                else => "18",
+            };
+
+            const token0_decimals: u8 = std.fmt.parseInt(u8, token0_decimals_str, 10) catch 18;
+            const token1_decimals: u8 = std.fmt.parseInt(u8, token1_decimals_str, 10) catch 18;
+
+            const symbol = try std.fmt.allocPrint(self.allocator, "{s}/{s}", .{ token0_symbol, token1_symbol });
+
+            try result.append(Market{
+                .id = try self.allocator.dupe(u8, pool_id),
+                .symbol = symbol,
+                .base = try self.allocator.dupe(u8, token0_symbol),
+                .quote = try self.allocator.dupe(u8, token1_symbol),
+                .baseId = try self.allocator.dupe(u8, token0_id),
+                .quoteId = try self.allocator.dupe(u8, token1_id),
+                .active = true,
+                .type = .spot,
+                .spot = true,
+                .margin = false,
+                .future = false,
+                .swap = false,
+                .option = false,
+                .contract = false,
+                .precision = MarketPrecision{
+                    .amount = token0_decimals,
+                    .price = token1_decimals,
+                    .base = token0_decimals,
+                    .quote = token1_decimals,
+                },
+                .info = null,
+            });
+        }
+
+        return result.toOwnedSlice();
     }
 
     pub fn fetchTicker(self: *UniswapExchange, symbol: []const u8) !Ticker {

@@ -56,7 +56,7 @@ pub const DydxExchange = struct {
             .supports_tick_size = true,
         };
 
-        const http_client = try http.HttpClient.init(allocator);
+        var http_client = try http.HttpClient.init(allocator);
         const base_name = try allocator.dupe(u8, "dydx");
         const base_url = try allocator.dupe(u8, "https://indexer.dydx.trade/v4");
         const ws_url = try allocator.dupe(u8, "wss://indexer.dydx.trade/v4/ws");

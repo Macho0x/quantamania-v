@@ -46,7 +46,7 @@ pub const BinanceExchange = struct {
         self.secret_key = auth_config.apiSecret;
         self.testnet = testnet;
 
-        const http_client = try http.HttpClient.init(allocator);
+        var http_client = try http.HttpClient.init(allocator);
         errdefer http_client.deinit();
 
         const base_name = try allocator.dupe(u8, "binance");
