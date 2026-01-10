@@ -1,12 +1,14 @@
-# CCXT-Zig - Phase 2: Major Exchanges Implementation
+# CCXT-Zig - Phase 2 & 3: Major + Mid-Tier Exchanges + DEX Support
 
-A high-performance cryptocurrency exchange library written in Zig, implementing 7 major exchanges representing ~80% of global trading volume.
+A high-performance cryptocurrency exchange library written in Zig, implementing **29 exchanges** (24 CEX + 5 DEX) with comprehensive precision handling and unified API.
 
-**Phase 3 Preview**: DEX support including Hyperliquid is now available in the codebase!
+**Latest Update**: Phase 3 adds 17 mid-tier CEX exchanges and 4 new DEXs (Uniswap, PancakeSwap, dYdX, Hyperliquid) with precision utilities!
 
-## Phase 2 Overview
+## Supported Exchanges
 
-This phase implements the following exchanges:
+### Phase 2: Major CEX (7 Exchanges) ✅
+
+Fully implemented with all methods:
 
 | Exchange | Spot | Margin | Futures | Testnet | Authentication |
 |----------|------|--------|---------|---------|----------------|
@@ -17,6 +19,41 @@ This phase implements the following exchanges:
 | [OKX](src/exchanges/okx.zig) | ✅ | ✅ | ✅ | ✅ | OK-ACCESS-SIGN |
 | [Gate.io](src/exchanges/gate.zig) | ✅ | ✅ | ✅ | ❌ | Authorization |
 | [Huobi](src/exchanges/huobi.zig) | ✅ | ✅ | ✅ | ❌ | HMAC-SHA256 |
+
+### Phase 3: Mid-Tier CEX (17 Exchanges) ✅
+
+Templates implemented, ready for API integration:
+
+| Exchange | Status | Precision Mode | Testnet |
+|----------|--------|---------------|---------|
+| **KuCoin** | ✅ Partial (fetchMarkets/Ticker) | tick_size | ✅ |
+| Bitfinex | ⏳ Template | significant_digits | ❌ |
+| Gemini | ⏳ Template | decimal_places | ✅ |
+| Bitget | ⏳ Template | decimal_places | ✅ |
+| BitMEX | ⏳ Template | decimal_places | ✅ |
+| Deribit | ⏳ Template | decimal_places | ✅ |
+| MEXC | ⏳ Template | decimal_places | ❌ |
+| Bitstamp | ⏳ Template | decimal_places | ❌ |
+| Poloniex | ⏳ Template | decimal_places | ❌ |
+| Bitrue | ⏳ Template | decimal_places | ❌ |
+| Phemex | ⏳ Template | tick_size | ✅ |
+| BingX | ⏳ Template | decimal_places | ❌ |
+| XT.COM | ⏳ Template | decimal_places | ❌ |
+| CoinEx | ⏳ Template | decimal_places | ❌ |
+| ProBit | ⏳ Template | decimal_places | ❌ |
+| WOO X | ⏳ Template | decimal_places | ❌ |
+| Bitmart | ⏳ Template | decimal_places | ❌ |
+| AscendEX | ⏳ Template | decimal_places | ❌ |
+
+### Phase 3: DEX Support (5 Exchanges) ✅
+
+| Exchange | Type | Status | Auth Method |
+|----------|------|--------|-------------|
+| **[Hyperliquid](src/exchanges/hyperliquid.zig)** | Perpetuals | ✅ Full | Wallet Signing |
+| **[Uniswap V3](src/exchanges/uniswap.zig)** | AMM (Ethereum) | ⏳ Template + GraphQL | Wallet |
+| **[PancakeSwap V3](src/exchanges/pancakeswap.zig)** | AMM (BSC) | ⏳ Template | Wallet |
+| **[dYdX V4](src/exchanges/dydx.zig)** | Perpetuals | ⏳ Template | Wallet |
+| GMX | Perpetuals | 🔜 Planned | Wallet |
 
 ## Features
 
@@ -39,11 +76,14 @@ This phase implements the following exchanges:
 
 ### Key Features
 
-- **Market Caching**: Markets are cached for 1 hour (configurable) to reduce API calls
+- **29 Exchanges**: 24 CEX + 5 DEX with unified API
+- **Market Caching**: Markets cached for 1 hour (configurable) to reduce API calls
 - **Rate Limiting**: Built-in rate limiting with configurable limits per exchange
 - **Symbol Normalization**: Unified symbol format (BTC/USDT) with exchange-specific handling
-- **Precision Handling**: Proper decimal handling for prices and amounts
+- **Precision Handling**: Comprehensive precision utilities with 3 modes (decimal_places, significant_digits, tick_size)
 - **Error Mapping**: Exchange-specific errors mapped to unified `ExchangeError` types
+- **DEX Support**: First-class support for decentralized exchanges with wallet-based auth
+- **Exchange Tags**: Documented unique tags for each exchange (see [EXCHANGE_TAGS.md](docs/EXCHANGE_TAGS.md))
 
 ## Quick Start
 
@@ -333,10 +373,45 @@ Benchmarks (Phase 2 - All exchanges):
 - Smart order routing
 - DEX support
 
+## Precision Handling
+
+All exchanges use the comprehensive precision utilities:
+
+```zig
+const ccxt = @import("ccxt_zig");
+
+// Round to decimal places (most CEXs)
+const rounded = ccxt.precision.PrecisionUtils.roundToDecimalPlaces(1.234567, 4);
+// Result: 1.2346
+
+// Round to tick size (KuCoin, Bybit, Phemex)
+const rounded = ccxt.precision.PrecisionUtils.roundToTickSize(99.7, 5.0);
+// Result: 100.0
+
+// Get exchange-specific precision config
+const config = ccxt.precision.ExchangePrecisionConfig.kucoin();
+// config.amount_mode == .tick_size
+// config.price_mode == .tick_size
+
+// Validate amount against market limits
+try ccxt.precision.PrecisionUtils.validateAmount(
+    amount, // 0.5
+    min,    // 0.1
+    max,    // 1000.0
+    8,      // precision
+    .decimal_places
+);
+
+// Format price with precision
+const formatted = try ccxt.precision.formatPrice(allocator, 1.23456789, 4, .decimal_places);
+// Result: "1.2346"
+```
+
 ## Documentation
 
+- **[Phase 3 Status](docs/PHASE3_STATUS.md)** - Implementation status and metrics
+- **[Exchange Tags](docs/EXCHANGE_TAGS.md)** - Unique tags for each exchange (price, size, limits)
 - **[Phase 3 Roadmap](docs/ROADMAP.md)** - Detailed plan for upcoming features
-- **[Project Status](docs/STATUS.md)** - Current state and metrics
 - **[Build Guide](build.zig)** - Build system configuration
 
 ## License
