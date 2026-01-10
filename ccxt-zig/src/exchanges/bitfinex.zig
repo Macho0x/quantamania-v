@@ -47,7 +47,7 @@ pub const BitfinexExchange = struct {
             .supports_tick_size = false,
         };
 
-        const http_client = try http.HttpClient.init(allocator);
+        var http_client = try http.HttpClient.init(allocator);
         const base_name = try allocator.dupe(u8, "bitfinex");
         const base_url = try allocator.dupe(u8, if (testnet) "https://test.bitfinex.com" else "https://api-pub.bitfinex.com");
         const ws_url = try allocator.dupe(u8, if (testnet) "wss://test.bitfinex.com/ws/2" else "wss://api-pub.bitfinex.com/ws/2");

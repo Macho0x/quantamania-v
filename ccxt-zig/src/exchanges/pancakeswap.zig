@@ -48,7 +48,7 @@ pub const PancakeSwapExchange = struct {
         self.chain_id = chain_id;
         self.precision_config = precision_utils.ExchangePrecisionConfig.dex();
 
-        const http_client = try http.HttpClient.init(allocator);
+        var http_client = try http.HttpClient.init(allocator);
         const base_name = try allocator.dupe(u8, "pancakeswap");
         const base_url = try allocator.dupe(u8, "https://api.thegraph.com/subgraphs/name/pancakeswap/exchange-v3");
         const ws_url = try allocator.dupe(u8, "wss://api.thegraph.com/subgraphs/name/pancakeswap/exchange-v3");

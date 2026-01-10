@@ -43,7 +43,7 @@ pub const CoinbaseExchange = struct {
         self.secret_key = auth_config.apiSecret;
         self.passphrase = auth_config.passphrase;
 
-        const http_client = try http.HttpClient.init(allocator);
+        var http_client = try http.HttpClient.init(allocator);
         errdefer http_client.deinit();
 
         const name = try allocator.dupe(u8, "coinbase");

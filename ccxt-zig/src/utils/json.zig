@@ -45,16 +45,28 @@ pub const JsonParser = struct {
         return current;
     }
     
-    // Get string value with type conversion
-    pub fn getString(self: *JsonParser, value: std.json.Value, default: ?[]const u8) !?[]const u8 {
-        return switch (value) {
+    // Get string from an object field (convenience used across exchange implementations)
+    pub fn getString(self: *JsonParser, obj: std.json.Value, key: []const u8, default: []const u8) ?[]const u8 {
+        _ = self;
+        const val = switch (obj) {
+            .object => |o| o.get(key) orelse return default,
+            else => return default,
+        };
+
+        return switch (val) {
             .string => |s| s,
             .number_string => |s| s,
-            .number => |n| {
-                var buffer: [100]u8 = undefined;
-                const str = std.fmt.bufPrint(&buffer, "{d}", .{n}) catch return default;
-                return try self.allocator.dupe(u8, str);
-            },
+            else => default,
+        };
+    }
+
+    // Get string from an optional JSON value
+    pub fn getStringValue(self: *JsonParser, value: ?std.json.Value, default: []const u8) []const u8 {
+        _ = self;
+        const v = value orelse return default;
+        return switch (v) {
+            .string => |s| s,
+            .number_string => |s| s,
             else => default,
         };
     }

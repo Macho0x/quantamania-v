@@ -43,7 +43,7 @@ pub const BybitExchange = struct {
         self.secret_key = auth_config.apiSecret;
         self.testnet = testnet;
 
-        const http_client = try http.HttpClient.init(allocator);
+        var http_client = try http.HttpClient.init(allocator);
         errdefer http_client.deinit();
 
         const name = try allocator.dupe(u8, "bybit");

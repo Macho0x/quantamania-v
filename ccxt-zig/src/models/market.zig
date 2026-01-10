@@ -1,6 +1,8 @@
 const std = @import("std");
 const types = @import("../base/types.zig");
 
+const market_module = @This();
+
 // Market limits
 pub const MarketLimits = struct {
     amount: struct { min: ?f64, max: ?f64 } = .{ .min = null, .max = null },
@@ -76,6 +78,10 @@ pub const MarketPrecision = struct {
 
 // Main Market structure
 pub const Market = struct {
+    pub const MarketLimits = market_module.MarketLimits;
+    pub const MarketPrecision = market_module.MarketPrecision;
+    pub const MarketFees = market_module.MarketFees;
+
     // Basic identifiers
     id: []const u8,
     symbol: []const u8,

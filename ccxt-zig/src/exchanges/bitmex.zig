@@ -47,7 +47,7 @@ pub const BitMEXExchange = struct {
             .supports_tick_size = false,
         };
 
-        const http_client = try http.HttpClient.init(allocator);
+        var http_client = try http.HttpClient.init(allocator);
         const base_name = try allocator.dupe(u8, "bitmex");
         const base_url = try allocator.dupe(u8, "https://api.bitmex.com"); // TODO: Set actual API URL
         const ws_url = try allocator.dupe(u8, "wss://ws.bitmex.com"); // TODO: Set actual WebSocket URL

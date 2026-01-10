@@ -47,7 +47,7 @@ pub const ProBitExchange = struct {
             .supports_tick_size = false,
         };
 
-        const http_client = try http.HttpClient.init(allocator);
+        var http_client = try http.HttpClient.init(allocator);
         const base_name = try allocator.dupe(u8, "probit");
         const base_url = try allocator.dupe(u8, "https://api.probit.com"); // TODO: Set actual API URL
         const ws_url = try allocator.dupe(u8, "wss://ws.probit.com"); // TODO: Set actual WebSocket URL
