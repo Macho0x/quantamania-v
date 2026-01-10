@@ -7,11 +7,11 @@
 // - Phase 3 DEX (1): Hyperliquid (perpetuals DEX)
 //
 // Template Implementations (20 total):
-// - Phase 3 Mid-Tier CEX (17): Bitfinex, Gemini, Bitget, BitMEX, Deribit, MEXC, 
+// - Phase 3 Mid-Tier CEX (17): Bitfinex, Gemini, Bitget, BitMEX, Deribit, MEXC,
 //   Bitstamp, Poloniex, Bitrue, Phemex, BingX, XT.COM, CoinEx, ProBit, WOO X, Bitmart, AscendEX
 // - Phase 3 DEX (3): Uniswap V3, PancakeSwap V3, dYdX V4
 //
-// See TODO_STATUS.md for detailed implementation status
+// See docs/PHASE3_STATUS.md for detailed implementation status
 //
 // Usage:
 //   const ccxt = @import("ccxt_zig");

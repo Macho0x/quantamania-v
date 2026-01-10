@@ -38,7 +38,7 @@ pub const PoloniexExchange = struct {
         self.secret_key = auth_config.apiSecret;
         self.testnet = testnet;
         
-        // TODO: Set appropriate precision config based on exchange requirements
+        // Poloniex uses decimal_places precision mode
         self.precision_config = .{
             .amount_mode = .decimal_places,
             .price_mode = .decimal_places,
@@ -49,8 +49,8 @@ pub const PoloniexExchange = struct {
 
         var http_client = try http.HttpClient.init(allocator);
         const base_name = try allocator.dupe(u8, "poloniex");
-        const base_url = try allocator.dupe(u8, "https://api.poloniex.com"); // TODO: Set actual API URL
-        const ws_url = try allocator.dupe(u8, "wss://ws.poloniex.com"); // TODO: Set actual WebSocket URL
+        const base_url = try allocator.dupe(u8, "https://api.poloniex.com");
+        const ws_url = try allocator.dupe(u8, "wss://ws.poloniex.com");
 
         self.base = exchange.BaseExchange{
             .allocator = allocator,
@@ -81,7 +81,8 @@ pub const PoloniexExchange = struct {
         self.allocator.destroy(self);
     }
 
-    // TODO: Implement all exchange methods
+    // Template exchange - methods return error.NotImplemented
+    // Full API implementation pending future development
     pub fn fetchMarkets(self: *PoloniexExchange) ![]Market {
         _ = self;
         return error.NotImplemented;

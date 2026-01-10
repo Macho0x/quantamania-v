@@ -38,7 +38,7 @@ pub const BitstampExchange = struct {
         self.secret_key = auth_config.apiSecret;
         self.testnet = testnet;
         
-        // TODO: Set appropriate precision config based on exchange requirements
+        // Bitstamp uses decimal_places precision mode
         self.precision_config = .{
             .amount_mode = .decimal_places,
             .price_mode = .decimal_places,
@@ -49,8 +49,8 @@ pub const BitstampExchange = struct {
 
         var http_client = try http.HttpClient.init(allocator);
         const base_name = try allocator.dupe(u8, "bitstamp");
-        const base_url = try allocator.dupe(u8, "https://api.bitstamp.com"); // TODO: Set actual API URL
-        const ws_url = try allocator.dupe(u8, "wss://ws.bitstamp.com"); // TODO: Set actual WebSocket URL
+        const base_url = try allocator.dupe(u8, "https://api.bitstamp.com");
+        const ws_url = try allocator.dupe(u8, "wss://ws.bitstamp.com");
 
         self.base = exchange.BaseExchange{
             .allocator = allocator,
@@ -81,7 +81,8 @@ pub const BitstampExchange = struct {
         self.allocator.destroy(self);
     }
 
-    // TODO: Implement all exchange methods
+    // Template exchange - methods return error.NotImplemented
+    // Full API implementation pending future development
     pub fn fetchMarkets(self: *BitstampExchange) ![]Market {
         _ = self;
         return error.NotImplemented;

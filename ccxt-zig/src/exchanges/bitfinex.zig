@@ -81,8 +81,9 @@ pub const BitfinexExchange = struct {
         self.allocator.destroy(self);
     }
 
-    // Exchange methods - Templates ready for API integration
-    // See TODO_STATUS.md for implementation details
+    // Template exchange - methods return error.NotImplemented
+    // Full API implementation pending future development
+    // Bitfinex uses significant_digits precision mode (unique among exchanges)
     pub fn fetchMarkets(self: *BitfinexExchange) ![]Market {
         _ = self;
         return error.NotImplemented;

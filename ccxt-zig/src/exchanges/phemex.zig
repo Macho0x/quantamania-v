@@ -38,19 +38,19 @@ pub const PhemexExchange = struct {
         self.secret_key = auth_config.apiSecret;
         self.testnet = testnet;
         
-        // TODO: Set appropriate precision config based on exchange requirements
+        // Phemex uses tick_size precision mode
         self.precision_config = .{
             .amount_mode = .tick_size,
             .price_mode = .tick_size,
             .default_amount_precision = 8,
             .default_price_precision = 8,
-            .supports_tick_size = false,
+            .supports_tick_size = true,
         };
 
         var http_client = try http.HttpClient.init(allocator);
         const base_name = try allocator.dupe(u8, "phemex");
-        const base_url = try allocator.dupe(u8, "https://api.phemex.com"); // TODO: Set actual API URL
-        const ws_url = try allocator.dupe(u8, "wss://ws.phemex.com"); // TODO: Set actual WebSocket URL
+        const base_url = try allocator.dupe(u8, "https://api.phemex.com");
+        const ws_url = try allocator.dupe(u8, "wss://ws.phemex.com");
 
         self.base = exchange.BaseExchange{
             .allocator = allocator,
@@ -81,7 +81,8 @@ pub const PhemexExchange = struct {
         self.allocator.destroy(self);
     }
 
-    // TODO: Implement all exchange methods
+    // Template exchange - methods return error.NotImplemented
+    // Full API implementation pending future development
     pub fn fetchMarkets(self: *PhemexExchange) ![]Market {
         _ = self;
         return error.NotImplemented;

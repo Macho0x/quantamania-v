@@ -71,9 +71,9 @@ pub const ${name}Exchange = struct {
         self.api_key = auth_config.apiKey;
         self.secret_key = auth_config.apiSecret;
         self.testnet = testnet;
-        
-        // TODO: Set appropriate precision config based on exchange requirements
-        self.precision_config = .{
+
+                // $name uses $precision precision mode
+                self.precision_config = .{
             .amount_mode = .${precision},
             .price_mode = .${precision},
             .default_amount_precision = 8,
@@ -83,8 +83,8 @@ pub const ${name}Exchange = struct {
 
         const http_client = try http.HttpClient.init(allocator);
         const base_name = try allocator.dupe(u8, "${id}");
-        const base_url = try allocator.dupe(u8, "https://api.${id}.com"); // TODO: Set actual API URL
-        const ws_url = try allocator.dupe(u8, "wss://ws.${id}.com"); // TODO: Set actual WebSocket URL
+        const base_url = try allocator.dupe(u8, "https://api.${id}.com"); // Note: Verify this URL for ${name}
+        const ws_url = try allocator.dupe(u8, "wss://ws.${id}.com"); // Note: Verify WebSocket URL for ${name}
 
         self.base = exchange.BaseExchange{
             .allocator = allocator,
@@ -115,7 +115,8 @@ pub const ${name}Exchange = struct {
         self.allocator.destroy(self);
     }
 
-    // TODO: Implement all exchange methods
+    // Template exchange - methods return error.NotImplemented
+    // Full API implementation pending future development
     pub fn fetchMarkets(self: *${name}Exchange) ![]Market {
         _ = self;
         return error.NotImplemented;
