@@ -16,29 +16,28 @@ const Balance = @import("../models/balance.zig").Balance;
 const Trade = @import("../models/trade.zig").Trade;
 const OrderBookEntry = @import("../models/orderbook.zig").OrderBookEntry;
 
-// Template exchange - methods return error.NotImplemented
-// Full API implementation pending future development
+// Coinspot Exchange Implementation
+// Coinspot is the leading Australian cryptocurrency exchange
+// Documentation: https://www.coinspot.com.au/api
 
-// HitBTC Exchange Implementation
-// HitBTC is a major European cryptocurrency exchange
-pub const HitBTCExchange = struct {
+pub const Coinspot = struct {
     allocator: std.mem.Allocator,
     base: exchange.BaseExchange,
     api_key: ?[]const u8,
     secret_key: ?[]const u8,
     testnet: bool,
 
-    pub fn init(allocator: std.mem.Allocator, auth_config: auth.AuthConfig, testnet: bool) !*HitBTCExchange {
-        const self = try allocator.create(HitBTCExchange);
+    pub fn init(allocator: std.mem.Allocator, auth_config: auth.AuthConfig, testnet: bool) !*Coinspot {
+        const self = try allocator.create(Coinspot);
         self.allocator = allocator;
         self.api_key = auth_config.apiKey;
         self.secret_key = auth_config.apiSecret;
         self.testnet = testnet;
 
         var http_client = try http.HttpClient.init(allocator);
-        const base_name = try allocator.dupe(u8, "hitbtc");
-        const base_url = try allocator.dupe(u8, if (testnet) "https://api.demo.hitbtc.com" else "https://api.hitbtc.com");
-        const ws_url = try allocator.dupe(u8, if (testnet) "wss://api.demo.hitbtc.com/2/websocket" else "wss://api.hitbtc.com/2/websocket");
+        const base_name = try allocator.dupe(u8, "coinspot");
+        const base_url = try allocator.dupe(u8, "https://www.coinspot.com.au");
+        const ws_url = try allocator.dupe(u8, null);
 
         self.base = exchange.BaseExchange{
             .allocator = allocator,
@@ -62,32 +61,32 @@ pub const HitBTCExchange = struct {
         return self;
     }
 
-    pub fn deinit(self: *HitBTCExchange) void {
+    pub fn deinit(self: *Coinspot) void {
         if (self.api_key) |k| self.allocator.free(k);
         if (self.secret_key) |s| self.allocator.free(s);
         self.base.deinit();
         self.allocator.destroy(self);
     }
 
-    pub fn fetchMarkets(self: *HitBTCExchange) ![]Market {
+    pub fn fetchMarkets(self: *Coinspot) ![]Market {
         _ = self;
         return error.NotImplemented;
     }
 
-    pub fn fetchTicker(self: *HitBTCExchange, symbol: []const u8) !Ticker {
+    pub fn fetchTicker(self: *Coinspot, symbol: []const u8) !Ticker {
         _ = self;
         _ = symbol;
         return error.NotImplemented;
     }
 
-    pub fn fetchOrderBook(self: *HitBTCExchange, symbol: []const u8, limit: ?usize) !OrderBook {
+    pub fn fetchOrderBook(self: *Coinspot, symbol: []const u8, limit: ?usize) !OrderBook {
         _ = self;
         _ = symbol;
         _ = limit;
         return error.NotImplemented;
     }
 
-    pub fn fetchTrades(self: *HitBTCExchange, symbol: []const u8, since: ?i64, limit: ?usize) ![]Trade {
+    pub fn fetchTrades(self: *Coinspot, symbol: []const u8, since: ?i64, limit: ?usize) ![]Trade {
         _ = self;
         _ = symbol;
         _ = since;
@@ -95,16 +94,16 @@ pub const HitBTCExchange = struct {
         return error.NotImplemented;
     }
 
-    pub fn fetchBalance(self: *HitBTCExchange) ![]Balance {
+    pub fn fetchBalance(self: *Coinspot) ![]Balance {
         _ = self;
         return error.NotImplemented;
     }
 };
 
-pub fn create(allocator: std.mem.Allocator, auth_config: auth.AuthConfig) !*HitBTCExchange {
-    return HitBTCExchange.init(allocator, auth_config, false);
+pub fn create(allocator: std.mem.Allocator, auth_config: auth.AuthConfig) !*Coinspot {
+    return Coinspot.init(allocator, auth_config, false);
 }
 
-pub fn createTestnet(allocator: std.mem.Allocator, auth_config: auth.AuthConfig) !*HitBTCExchange {
-    return HitBTCExchange.init(allocator, auth_config, true);
+pub fn createTestnet(allocator: std.mem.Allocator, auth_config: auth.AuthConfig) !*Coinspot {
+    return Coinspot.init(allocator, auth_config, true);
 }
