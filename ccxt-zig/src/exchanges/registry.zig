@@ -34,6 +34,13 @@ pub const ExchangeType = enum {
     bitmart,
     ascendex,
     
+    // Additional Critical CEX (5)
+    htx,
+    hitbtc,
+    bitso,
+    mercado,
+    upbit,
+    
     // Phase 3: DEX (5)
     hyperliquid,
     uniswap,
@@ -449,6 +456,143 @@ pub fn createDefaultRegistry(allocator: std.mem.Allocator) !ExchangeRegistry {
                 return try dydx.createTestnet(allocator, auth_config);
             }
         }.f,
+    });
+
+    // === Additional Critical CEX Exchanges ===
+    
+    try registry.register("htx", .{
+        .info = .{
+            .name = "HTX",
+            .description = "Global cryptocurrency exchange (formerly Huobi)",
+            .doc_url = "https://huobiapi.github.io/docs/spot/v1/en/",
+            .version = "v1",
+            .requires_api_key = true,
+            .requires_secret = true,
+            .requires_passphrase = false,
+            .testnet_supported = false,
+            .spot_supported = true,
+            .margin_supported = true,
+            .futures_supported = true,
+        },
+        .creator = struct {
+            fn f(allocator: std.mem.Allocator, auth_config: auth.AuthConfig) anyerror!*const anyopaque {
+                const htx = @import("htx.zig");
+                return try htx.HTX.create(allocator, auth_config);
+            }
+        }.f,
+        .testnet_creator = struct {
+            fn f(allocator: std.mem.Allocator, auth_config: auth.AuthConfig) anyerror!*const anyopaque {
+                const htx = @import("htx.zig");
+                return try htx.HTX.createTestnet(allocator, auth_config);
+            }
+        }.f,
+    });
+
+    try registry.register("hitbtc", .{
+        .info = .{
+            .name = "HitBTC",
+            .description = "Major European cryptocurrency exchange with advanced trading",
+            .doc_url = "https://api.hitbtc.com/",
+            .version = "v2",
+            .requires_api_key = true,
+            .requires_secret = true,
+            .requires_passphrase = false,
+            .testnet_supported = true,
+            .spot_supported = true,
+            .margin_supported = true,
+            .futures_supported = true,
+        },
+        .creator = struct {
+            fn f(allocator: std.mem.Allocator, auth_config: auth.AuthConfig) anyerror!*const anyopaque {
+                const hitbtc = @import("hitbtc.zig");
+                return try hitbtc.HitBTC.create(allocator, auth_config);
+            }
+        }.f,
+        .testnet_creator = struct {
+            fn f(allocator: std.mem.Allocator, auth_config: auth.AuthConfig) anyerror!*const anyopaque {
+                const hitbtc = @import("hitbtc.zig");
+                return try hitbtc.HitBTC.createTestnet(allocator, auth_config);
+            }
+        }.f,
+    });
+
+    try registry.register("bitso", .{
+        .info = .{
+            .name = "BitSO",
+            .description = "Leading Latin American cryptocurrency exchange",
+            .doc_url = "https://bitso.com/",
+            .version = "v3",
+            .requires_api_key = true,
+            .requires_secret = true,
+            .requires_passphrase = false,
+            .testnet_supported = true,
+            .spot_supported = true,
+            .margin_supported = true,
+            .futures_supported = false,
+        },
+        .creator = struct {
+            fn f(allocator: std.mem.Allocator, auth_config: auth.AuthConfig) anyerror!*const anyopaque {
+                const bitso = @import("bitso.zig");
+                return try bitso.BitSO.create(allocator, auth_config);
+            }
+        }.f,
+        .testnet_creator = struct {
+            fn f(allocator: std.mem.Allocator, auth_config: auth.AuthConfig) anyerror!*const anyopaque {
+                const bitso = @import("bitso.zig");
+                return try bitso.BitSO.createTestnet(allocator, auth_config);
+            }
+        }.f,
+    });
+
+    try registry.register("mercado", .{
+        .info = .{
+            .name = "Mercado Bitcoin",
+            .description = "Major Brazilian cryptocurrency exchange",
+            .doc_url = "https://www.mercadobitcoin.com.br/api-doc/",
+            .version = "v4",
+            .requires_api_key = true,
+            .requires_secret = true,
+            .requires_passphrase = false,
+            .testnet_supported = true,
+            .spot_supported = true,
+            .margin_supported = false,
+            .futures_supported = false,
+        },
+        .creator = struct {
+            fn f(allocator: std.mem.Allocator, auth_config: auth.AuthConfig) anyerror!*const anyopaque {
+                const mercado = @import("mercado.zig");
+                return try mercado.MercadoBitcoin.create(allocator, auth_config);
+            }
+        }.f,
+        .testnet_creator = struct {
+            fn f(allocator: std.mem.Allocator, auth_config: auth.AuthConfig) anyerror!*const anyopaque {
+                const mercado = @import("mercado.zig");
+                return try mercado.MercadoBitcoin.createTestnet(allocator, auth_config);
+            }
+        }.f,
+    });
+
+    try registry.register("upbit", .{
+        .info = .{
+            .name = "Upbit",
+            .description = "Largest cryptocurrency exchange in South Korea",
+            .doc_url = "https://docs.upbit.com/",
+            .version = "v1",
+            .requires_api_key = true,
+            .requires_secret = true,
+            .requires_passphrase = false,
+            .testnet_supported = false,
+            .spot_supported = true,
+            .margin_supported = false,
+            .futures_supported = false,
+        },
+        .creator = struct {
+            fn f(allocator: std.mem.Allocator, auth_config: auth.AuthConfig) anyerror!*const anyopaque {
+                const upbit = @import("upbit.zig");
+                return try upbit.Upbit.create(allocator, auth_config);
+            }
+        }.f,
+        .testnet_creator = null,
     });
 
     // Note: Additional mid-tier CEX exchanges (bitfinex, gemini, bitget, etc.) 

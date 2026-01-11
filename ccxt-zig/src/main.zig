@@ -1,25 +1,32 @@
 // CCXT-Zig: Cryptocurrency Exchange Library in Zig
-// Phase 3: Mid-Tier Exchanges & DEX Implementation
+// Phase 3+ Expansion: Critical Missing Exchanges Implementation
 //
-// Fully Implemented Exchanges (8 total):
+// Fully Implemented Exchanges (13 total):
 // - Phase 2 CEX (7): Binance, Kraken, Coinbase, Bybit, OKX, Gate.io, Huobi
-// - Phase 3 CEX (1): KuCoin (all 11 methods complete)
+// - Phase 3 CEX (5): KuCoin, HTX, HitBTC, BitSO, Mercado Bitcoin, Upbit
 // - Phase 3 DEX (1): Hyperliquid (perpetuals DEX)
 //
-// Template Implementations (20 total):
+// Template Implementations (17 total):
 // - Phase 3 Mid-Tier CEX (17): Bitfinex, Gemini, Bitget, BitMEX, Deribit, MEXC,
 //   Bitstamp, Poloniex, Bitrue, Phemex, BingX, XT.COM, CoinEx, ProBit, WOO X, Bitmart, AscendEX
 // - Phase 3 DEX (3): Uniswap V3, PancakeSwap V3, dYdX V4
 //
-// See docs/PHASE3_STATUS.md for detailed implementation status
+// Recent Additions (Critical Missing Exchanges):
+// - HTX: Formerly Huobi (major global exchange)
+// - HitBTC: Major European exchange
+// - BitSO: Leading Latin American exchange  
+// - Mercado Bitcoin: Major Brazilian exchange
+// - Upbit: Largest Korean exchange
+//
+// See docs/TRANSLATION_ANALYSIS.md for progress toward 100% CCXT coverage
 //
 // Usage:
 //   const ccxt = @import("ccxt_zig");
 //   var registry = try ccxt.ExchangeRegistry.createDefaultRegistry(allocator);
 //   defer registry.deinit();
 //
-//   if (registry.get("kucoin")) |kucoin_info| {
-//       const exchange = try kucoin_info.creator(allocator, auth_config);
+//   if (registry.get("htx")) |htx_info| {
+//       const exchange = try htx_info.creator(allocator, auth_config);
 //       defer exchange.deinit();
 //       const markets = try exchange.fetchMarkets();
 //       // ... use exchange methods
@@ -86,6 +93,13 @@ pub const probit = @import("exchanges/probit.zig");
 pub const woox = @import("exchanges/woox.zig");
 pub const bitmart = @import("exchanges/bitmart.zig");
 pub const ascendex = @import("exchanges/ascendex.zig");
+
+// Exchange implementations - Phase 3+: Critical Missing CEX
+pub const htx = @import("exchanges/htx.zig");
+pub const hitbtc = @import("exchanges/hitbtc.zig");
+pub const bitso = @import("exchanges/bitso.zig");
+pub const mercado = @import("exchanges/mercado.zig");
+pub const upbit = @import("exchanges/upbit.zig");
 
 // Exchange implementations - Phase 3: DEX
 pub const hyperliquid = @import("exchanges/hyperliquid.zig");
