@@ -125,42 +125,261 @@ pub const BitfinexExchange = struct {
     }
 
     pub fn createOrder(self: *BitfinexExchange, symbol: []const u8, order_type: OrderType, side: OrderSide, amount: f64, price: ?f64, params: ?std.StringHashMap([]const u8)) !Order {
-        _ = self;
-        _ = symbol;
-        _ = order_type;
-        _ = side;
-        _ = amount;
-        _ = price;
         _ = params;
-        return error.NotImplemented;
+        if (self.api_key == null or self.secret_key == null) {
+            return error.AuthenticationRequired;
+        }
+
+        const market = self.base.findMarket(symbol) orelse return error.SymbolNotFound;
+
+        // Apply Bitfinex's significant_digits precision handling
+        const precision_amount = precision_utils.PrecisionUtils.roundToSignificantDigits(amount, self.precision_config.default_amount_precision);
+        const precision_price = if (price) |p| precision_utils.PrecisionUtils.roundToSignificantDigits(p, self.precision_config.default_price_precision) else null;
+
+        var body = std.ArrayList(u8).init(self.allocator);
+        defer body.deinit();
+
+        try body.appendSlice(try std.fmt.allocPrint(self.allocator,
+            "symbol={s}&amount={d}&side={s}&type={s}",
+            .{ market.id, precision_amount, side, order_type }));
+
+        if (price) |p| {
+            try body.appendSlice(try std.fmt.allocPrint(self.allocator, "&price={d}", .{ precision_price }));
+        }
+
+        const url = "https://api.bitfinex.com/v2/auth/w/order/submit";
+
+        var headers = std.StringHashMap([]const u8).init(self.allocator);
+        defer headers.deinit();
+
+        try self.authenticate(&headers, "/v2/auth/w/order/submit", body.items);
+
+        const response = try self.base.http_client.post(url, &headers, body.items);
+        defer response.deinit(self.allocator);
+
+        if (response.status != 200) {
+            return error.NetworkError;
+        }
+
+        var parser = json.JsonParser.init(self.allocator);
+        defer parser.deinit();
+
+        const parsed = try parser.parse(response.body);
+        defer parsed.deinit();
+
+        const order_id = parsed.array.items[0].number.asInt();
+
+        return Order{
+            .id = try std.fmt.allocPrint(self.allocator, "{d}", .{order_id}),
+            .symbol = try self.allocator.dupe(u8, symbol),
+            .type = try self.allocator.dupe(u8, order_type),
+            .side = try self.allocator.dupe(u8, side),
+            .price = precision_price,
+            .amount = precision_amount,
+            .status = try self.allocator.dupe(u8, "open"),
+            .timestamp = std.time.milliTimestamp(),
+            .info = parsed,
+        };
     }
 
     pub fn cancelOrder(self: *BitfinexExchange, order_id: []const u8, symbol: ?[]const u8) !void {
-        _ = self;
-        _ = order_id;
-        _ = symbol;
-        return error.NotImplemented;
+        if (self.api_key == null or self.secret_key == null) {
+            return error.AuthenticationRequired;
+        }
+
+        var body = std.ArrayList(u8).init(self.allocator);
+        defer body.deinit();
+
+        try body.appendSlice(try std.fmt.allocPrint(self.allocator, "id={s}", .{ order_id }));
+
+        const url = "https://api.bitfinex.com/v2/auth/w/order/cancel";
+
+        var headers = std.StringHashMap([]const u8).init(self.allocator);
+        defer headers.deinit();
+
+        try self.authenticate(&headers, "/v2/auth/w/order/cancel", body.items);
+
+        const response = try self.base.http_client.post(url, &headers, body.items);
+        defer response.deinit(self.allocator);
+
+        if (response.status != 200) {
+            return error.NetworkError;
+        }
     }
 
     pub fn fetchOrder(self: *BitfinexExchange, order_id: []const u8, symbol: ?[]const u8) !Order {
-        _ = self;
-        _ = order_id;
-        _ = symbol;
-        return error.NotImplemented;
+        if (self.api_key == null or self.secret_key == null) {
+            return error.AuthenticationRequired;
+        }
+
+        const url = "https://api.bitfinex.com/v2/auth/r/order/{s}/status";
+
+        var headers = std.StringHashMap([]const u8).init(self.allocator);
+        defer headers.deinit();
+
+        try self.authenticate(&headers, "/v2/auth/r/order/{s}/status", .{ order_id });
+
+        const response = try self.base.http_client.get(url, &headers);
+        defer response.deinit(self.allocator);
+
+        if (response.status != 200) {
+            return error.NetworkError;
+        }
+
+        var parser = json.JsonParser.init(self.allocator);
+        defer parser.deinit();
+
+        const parsed = try parser.parse(response.body);
+        defer parsed.deinit();
+
+        const status = parsed.array.items[0].string orelse return error.NetworkError;
+        const type_str = parsed.array.items[1].string orelse return error.NetworkError;
+        const side_str = parsed.array.items[2].string orelse return error.NetworkError;
+        const price = parsed.array.items[3].number.asFloat();
+        const amount = parsed.array.items[4].number.asFloat();
+
+        return Order{
+            .id = try self.allocator.dupe(u8, order_id),
+            .symbol = if (symbol) |s| try self.allocator.dupe(u8, s) else null,
+            .type = try self.allocator.dupe(u8, type_str),
+            .side = try self.allocator.dupe(u8, side_str),
+            .price = price,
+            .amount = amount,
+            .status = try self.allocator.dupe(u8, status),
+            .timestamp = std.time.milliTimestamp(),
+            .info = parsed,
+        };
     }
 
     pub fn fetchOpenOrders(self: *BitfinexExchange, symbol: ?[]const u8) ![]Order {
-        _ = self;
-        _ = symbol;
-        return error.NotImplemented;
+        if (self.api_key == null or self.secret_key == null) {
+            return error.AuthenticationRequired;
+        }
+
+        var url = "https://api.bitfinex.com/v2/auth/r/orders";
+        if (symbol) |s| {
+            const market = self.base.findMarket(s) orelse return error.SymbolNotFound;
+            url = try std.fmt.allocPrint(self.allocator, "https://api.bitfinex.com/v2/auth/r/orders?symbol={s}", .{ market.id });
+            defer self.allocator.free(url);
+        }
+
+        var headers = std.StringHashMap([]const u8).init(self.allocator);
+        defer headers.deinit();
+
+        try self.authenticate(&headers, "/v2/auth/r/orders", "");
+
+        const response = try self.base.http_client.get(url, &headers);
+        defer response.deinit(self.allocator);
+
+        if (response.status != 200) {
+            return error.NetworkError;
+        }
+
+        var parser = json.JsonParser.init(self.allocator);
+        defer parser.deinit();
+
+        const parsed = try parser.parse(response.body);
+        defer parsed.deinit();
+
+        var orders = std.ArrayList(Order).init(self.allocator);
+
+        for (parsed.array.items) |order_data| {
+            const order_id = order_data.array.items[0].number.asInt();
+            const status = order_data.array.items[1].string orelse continue;
+            const type_str = order_data.array.items[2].string orelse continue;
+            const side_str = order_data.array.items[3].string orelse continue;
+            const price = order_data.array.items[4].number.asFloat();
+            const amount = order_data.array.items[5].number.asFloat();
+            const order_symbol = order_data.array.items[6].string orelse continue;
+
+            try orders.append(Order{
+                .id = try std.fmt.allocPrint(self.allocator, "{d}", .{order_id}),
+                .symbol = try self.allocator.dupe(u8, order_symbol),
+                .type = try self.allocator.dupe(u8, type_str),
+                .side = try self.allocator.dupe(u8, side_str),
+                .price = price,
+                .amount = amount,
+                .status = try self.allocator.dupe(u8, status),
+                .timestamp = std.time.milliTimestamp(),
+                .info = order_data,
+            });
+        }
+
+        return orders.toOwnedSlice();
     }
 
     pub fn fetchClosedOrders(self: *BitfinexExchange, symbol: ?[]const u8, since: ?i64, limit: ?u32) ![]Order {
-        _ = self;
-        _ = symbol;
-        _ = since;
-        _ = limit;
-        return error.NotImplemented;
+        if (self.api_key == null or self.secret_key == null) {
+            return error.AuthenticationRequired;
+        }
+
+        var query = std.ArrayList(u8).init(self.allocator);
+        defer query.deinit();
+
+        if (symbol) |s| {
+            const market = self.base.findMarket(s) orelse return error.SymbolNotFound;
+            try query.appendSlice(try std.fmt.allocPrint(self.allocator, "symbol={s}", .{ market.id }));
+        }
+
+        if (since) |s| {
+            if (query.len > 0) try query.append('&');
+            try query.appendSlice(try std.fmt.allocPrint(self.allocator, "start={d}", .{ s }));
+        }
+
+        if (limit) |l| {
+            if (query.len > 0) try query.append('&');
+            try query.appendSlice(try std.fmt.allocPrint(self.allocator, "limit={d}", .{ l }));
+        }
+
+        var url = "https://api.bitfinex.com/v2/auth/r/orders/hist";
+        if (query.len > 0) {
+            url = try std.fmt.allocPrint(self.allocator, "https://api.bitfinex.com/v2/auth/r/orders/hist?{s}", .{ query.items });
+            defer self.allocator.free(url);
+        }
+
+        var headers = std.StringHashMap([]const u8).init(self.allocator);
+        defer headers.deinit();
+
+        try self.authenticate(&headers, "/v2/auth/r/orders/hist", query.items);
+
+        const response = try self.base.http_client.get(url, &headers);
+        defer response.deinit(self.allocator);
+
+        if (response.status != 200) {
+            return error.NetworkError;
+        }
+
+        var parser = json.JsonParser.init(self.allocator);
+        defer parser.deinit();
+
+        const parsed = try parser.parse(response.body);
+        defer parsed.deinit();
+
+        var orders = std.ArrayList(Order).init(self.allocator);
+
+        for (parsed.array.items) |order_data| {
+            const order_id = order_data.array.items[0].number.asInt();
+            const status = order_data.array.items[1].string orelse continue;
+            const type_str = order_data.array.items[2].string orelse continue;
+            const side_str = order_data.array.items[3].string orelse continue;
+            const price = order_data.array.items[4].number.asFloat();
+            const amount = order_data.array.items[5].number.asFloat();
+            const order_symbol = order_data.array.items[6].string orelse continue;
+
+            try orders.append(Order{
+                .id = try std.fmt.allocPrint(self.allocator, "{d}", .{order_id}),
+                .symbol = try self.allocator.dupe(u8, order_symbol),
+                .type = try self.allocator.dupe(u8, type_str),
+                .side = try self.allocator.dupe(u8, side_str),
+                .price = price,
+                .amount = amount,
+                .status = try self.allocator.dupe(u8, status),
+                .timestamp = std.time.milliTimestamp(),
+                .info = order_data,
+            });
+        }
+
+        return orders.toOwnedSlice();
     }
 };
 

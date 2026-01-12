@@ -375,10 +375,316 @@ pub const BitSO = struct {
         }
         
         return balances.toOwnedSlice();
-    }
-    
-    // Authentication
-    fn authenticate(self: *BitSO, headers: *std.StringHashMap([]const u8)) !void {
+        }
+
+        // Order management methods
+        pub fn createOrder(
+        self: *BitSO,
+        symbol: []const u8,
+        type_str: []const u8,
+        side_str: []const u8,
+        amount: f64,
+        price: ?f64,
+        params: ?std.StringHashMap([]const u8),
+        ) !Order {
+        _ = params;
+        if (self.base.auth_config.apiKey == null or self.base.auth_config.apiSecret == null) {
+            return error.AuthenticationRequired;
+        }
+
+        const market = self.base.findMarket(symbol) orelse return error.SymbolNotFound;
+
+        var body = std.ArrayList(u8).init(self.allocator);
+        defer body.deinit();
+
+        try body.appendSlice(try std.fmt.allocPrint(self.allocator,
+            "book={s}&side={s}&type={s}&major={d}",
+            .{ market.id, side_str, type_str, amount }));
+
+        if (price) |p| {
+            try body.appendSlice(try std.fmt.allocPrint(self.allocator, "&price={d}", .{p}));
+        }
+
+        const url = "https://api.bitso.com/v3/orders/";
+
+        var headers = std.StringHashMap([]const u8).init(self.allocator);
+        defer headers.deinit();
+
+        try self.authenticate(&headers);
+
+        const response = try self.base.http_client.post(url, &headers, body.items);
+        defer response.deinit(self.allocator);
+
+        if (response.status != 200) {
+            return error.NetworkError;
+        }
+
+        var parser = json.JsonParser.init(self.allocator);
+        defer parser.deinit();
+
+        const parsed = try parser.parse(response.body);
+        defer parsed.deinit();
+
+        const success = parsed.object.get("success") orelse return error.NetworkError;
+        if (!success.boolean) {
+            return error.NetworkError;
+        }
+
+        const payload = parsed.object.get("payload") orelse return error.NetworkError;
+        const order_id = payload.object.get("oid").?.string orelse return error.NetworkError;
+
+        return Order{
+            .id = try self.allocator.dupe(u8, order_id),
+            .symbol = try self.allocator.dupe(u8, symbol),
+            .type = try self.allocator.dupe(u8, type_str),
+            .side = try self.allocator.dupe(u8, side_str),
+            .price = price,
+            .amount = amount,
+            .status = try self.allocator.dupe(u8, "open"),
+            .timestamp = std.time.milliTimestamp(),
+            .info = parsed,
+        };
+        }
+
+        pub fn cancelOrder(self: *BitSO, order_id: []const u8, symbol: []const u8) !Order {
+        if (self.base.auth_config.apiKey == null or self.base.auth_config.apiSecret == null) {
+            return error.AuthenticationRequired;
+        }
+
+        const url = try std.fmt.allocPrint(self.allocator, "https://api.bitso.com/v3/orders/{s}/", .{ order_id });
+        defer self.allocator.free(url);
+
+        var headers = std.StringHashMap([]const u8).init(self.allocator);
+        defer headers.deinit();
+
+        try self.authenticate(&headers);
+
+        const response = try self.base.http_client.delete(url, &headers);
+        defer response.deinit(self.allocator);
+
+        if (response.status != 200) {
+            return error.NetworkError;
+        }
+
+        var parser = json.JsonParser.init(self.allocator);
+        defer parser.deinit();
+
+        const parsed = try parser.parse(response.body);
+        defer parsed.deinit();
+
+        const success = parsed.object.get("success") orelse return error.NetworkError;
+        if (!success.boolean) {
+            return error.NetworkError;
+        }
+
+        const payload = parsed.object.get("payload") orelse return error.NetworkError;
+        const status = payload.object.get("status").?.string orelse return error.NetworkError;
+
+        return Order{
+            .id = try self.allocator.dupe(u8, order_id),
+            .symbol = try self.allocator.dupe(u8, symbol),
+            .status = try self.allocator.dupe(u8, status),
+            .timestamp = std.time.milliTimestamp(),
+            .info = parsed,
+        };
+        }
+
+        pub fn fetchOrder(self: *BitSO, order_id: []const u8, symbol: []const u8) !Order {
+        if (self.base.auth_config.apiKey == null or self.base.auth_config.apiSecret == null) {
+            return error.AuthenticationRequired;
+        }
+
+        const url = try std.fmt.allocPrint(self.allocator, "https://api.bitso.com/v3/orders/{s}/", .{ order_id });
+        defer self.allocator.free(url);
+
+        var headers = std.StringHashMap([]const u8).init(self.allocator);
+        defer headers.deinit();
+
+        try self.authenticate(&headers);
+
+        const response = try self.base.http_client.get(url, &headers);
+        defer response.deinit(self.allocator);
+
+        if (response.status != 200) {
+            return error.NetworkError;
+        }
+
+        var parser = json.JsonParser.init(self.allocator);
+        defer parser.deinit();
+
+        const parsed = try parser.parse(response.body);
+        defer parsed.deinit();
+
+        const success = parsed.object.get("success") orelse return error.NetworkError;
+        if (!success.boolean) {
+            return error.NetworkError;
+        }
+
+        const payload = parsed.object.get("payload") orelse return error.NetworkError;
+        const status = payload.object.get("status").?.string orelse return error.NetworkError;
+        const type_str = payload.object.get("type").?.string orelse return error.NetworkError;
+        const side_str = payload.object.get("side").?.string orelse return error.NetworkError;
+        const price = payload.object.get("price").?.number.asFloat();
+        const amount = payload.object.get("original_amount").?.number.asFloat();
+
+        return Order{
+            .id = try self.allocator.dupe(u8, order_id),
+            .symbol = try self.allocator.dupe(u8, symbol),
+            .type = try self.allocator.dupe(u8, type_str),
+            .side = try self.allocator.dupe(u8, side_str),
+            .price = price,
+            .amount = amount,
+            .status = try self.allocator.dupe(u8, status),
+            .timestamp = std.time.milliTimestamp(),
+            .info = parsed,
+        };
+        }
+
+        pub fn fetchOpenOrders(self: *BitSO, symbol: ?[]const u8) ![]Order {
+        if (self.base.auth_config.apiKey == null or self.base.auth_config.apiSecret == null) {
+            return error.AuthenticationRequired;
+        }
+
+        var url = "https://api.bitso.com/v3/open_orders/";
+        if (symbol) |s| {
+            const market = self.base.findMarket(s) orelse return error.SymbolNotFound;
+            url = try std.fmt.allocPrint(self.allocator, "https://api.bitso.com/v3/open_orders/?book={s}", .{ market.id });
+            defer self.allocator.free(url);
+        }
+
+        var headers = std.StringHashMap([]const u8).init(self.allocator);
+        defer headers.deinit();
+
+        try self.authenticate(&headers);
+
+        const response = try self.base.http_client.get(url, &headers);
+        defer response.deinit(self.allocator);
+
+        if (response.status != 200) {
+            return error.NetworkError;
+        }
+
+        var parser = json.JsonParser.init(self.allocator);
+        defer parser.deinit();
+
+        const parsed = try parser.parse(response.body);
+        defer parsed.deinit();
+
+        const success = parsed.object.get("success") orelse return error.NetworkError;
+        if (!success.boolean) {
+            return error.NetworkError;
+        }
+
+        const payload = parsed.object.get("payload") orelse return error.NetworkError;
+        var orders = std.ArrayList(Order).init(self.allocator);
+
+        for (payload.array.items) |order_data| {
+            const order_id = order_data.object.get("oid").?.string orelse continue;
+            const order_symbol = order_data.object.get("book").?.string orelse continue;
+            const status = order_data.object.get("status").?.string orelse continue;
+            const type_str = order_data.object.get("type").?.string orelse continue;
+            const side_str = order_data.object.get("side").?.string orelse continue;
+            const price = order_data.object.get("price").?.number.asFloat();
+            const amount = order_data.object.get("original_amount").?.number.asFloat();
+
+            try orders.append(Order{
+                .id = try self.allocator.dupe(u8, order_id),
+                .symbol = try self.allocator.dupe(u8, order_symbol),
+                .type = try self.allocator.dupe(u8, type_str),
+                .side = try self.allocator.dupe(u8, side_str),
+                .price = price,
+                .amount = amount,
+                .status = try self.allocator.dupe(u8, status),
+                .timestamp = std.time.milliTimestamp(),
+                .info = order_data,
+            });
+        }
+
+        return orders.toOwnedSlice();
+        }
+
+        pub fn fetchClosedOrders(self: *BitSO, symbol: ?[]const u8, since: ?i64, limit: ?u32) ![]Order {
+        if (self.base.auth_config.apiKey == null or self.base.auth_config.apiSecret == null) {
+            return error.AuthenticationRequired;
+        }
+
+        var query = std.ArrayList(u8).init(self.allocator);
+        defer query.deinit();
+
+        if (symbol) |s| {
+            const market = self.base.findMarket(s) orelse return error.SymbolNotFound;
+            try query.appendSlice(try std.fmt.allocPrint(self.allocator, "book={s}", .{ market.id }));
+        }
+
+        if (since) |s| {
+            if (query.len > 0) try query.append('&');
+            try query.appendSlice(try std.fmt.allocPrint(self.allocator, "timestamp={d}", .{ s }));
+        }
+
+        if (limit) |l| {
+            if (query.len > 0) try query.append('&');
+            try query.appendSlice(try std.fmt.allocPrint(self.allocator, "limit={d}", .{ l }));
+        }
+
+        var url = "https://api.bitso.com/v3/orders/";
+        if (query.len > 0) {
+            url = try std.fmt.allocPrint(self.allocator, "https://api.bitso.com/v3/orders/?{s}", .{ query.items });
+            defer self.allocator.free(url);
+        }
+
+        var headers = std.StringHashMap([]const u8).init(self.allocator);
+        defer headers.deinit();
+
+        try self.authenticate(&headers);
+
+        const response = try self.base.http_client.get(url, &headers);
+        defer response.deinit(self.allocator);
+
+        if (response.status != 200) {
+            return error.NetworkError;
+        }
+
+        var parser = json.JsonParser.init(self.allocator);
+        defer parser.deinit();
+
+        const parsed = try parser.parse(response.body);
+        defer parsed.deinit();
+
+        const success = parsed.object.get("success") orelse return error.NetworkError;
+        if (!success.boolean) {
+            return error.NetworkError;
+        }
+
+        const payload = parsed.object.get("payload") orelse return error.NetworkError;
+        var orders = std.ArrayList(Order).init(self.allocator);
+
+        for (payload.array.items) |order_data| {
+            const order_id = order_data.object.get("oid").?.string orelse continue;
+            const order_symbol = order_data.object.get("book").?.string orelse continue;
+            const status = order_data.object.get("status").?.string orelse continue;
+            const type_str = order_data.object.get("type").?.string orelse continue;
+            const side_str = order_data.object.get("side").?.string orelse continue;
+            const price = order_data.object.get("price").?.number.asFloat();
+            const amount = order_data.object.get("original_amount").?.number.asFloat();
+
+            try orders.append(Order{
+                .id = try self.allocator.dupe(u8, order_id),
+                .symbol = try self.allocator.dupe(u8, order_symbol),
+                .type = try self.allocator.dupe(u8, type_str),
+                .side = try self.allocator.dupe(u8, side_str),
+                .price = price,
+                .amount = amount,
+                .status = try self.allocator.dupe(u8, status),
+                .timestamp = std.time.milliTimestamp(),
+                .info = order_data,
+            });
+        }
+
+        return orders.toOwnedSlice();
+        }
+
+        // Authentication
+        fn authenticate(self: *BitSO, headers: *std.StringHashMap([]const u8)) !void {
         const api_key = self.base.auth_config.apiKey orelse return error.AuthenticationRequired;
         const api_secret = self.base.auth_config.apiSecret orelse return error.AuthenticationRequired;
         

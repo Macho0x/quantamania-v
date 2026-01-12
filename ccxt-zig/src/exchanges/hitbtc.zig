@@ -358,9 +358,286 @@ pub const HitBTC = struct {
         
         return balances.toOwnedSlice();
     }
-    
-    // Authentication
-    fn authenticate(self: *HitBTC, headers: *std.StringHashMap([]const u8)) !void {
+
+    // Order management methods
+        pub fn createOrder(
+        self: *HitBTC,
+        symbol: []const u8,
+        type_str: []const u8,
+        side_str: []const u8,
+        amount: f64,
+        price: ?f64,
+        params: ?std.StringHashMap([]const u8),
+        ) !Order {
+        _ = params;
+        if (self.base.auth_config.apiKey == null or self.base.auth_config.apiSecret == null) {
+            return error.AuthenticationRequired;
+        }
+
+        const market = self.base.findMarket(symbol) orelse return error.SymbolNotFound;
+
+        var body = std.ArrayList(u8).init(self.allocator);
+        defer body.deinit();
+
+        try body.appendSlice(try std.fmt.allocPrint(self.allocator,
+            "symbol={s}&side={s}&type={s}&quantity={d}",
+            .{ market.id, side_str, type_str, amount }));
+
+        if (price) |p| {
+            try body.appendSlice(try std.fmt.allocPrint(self.allocator, "&price={d}", .{p}));
+        }
+
+        const url = "https://api.hitbtc.com/api/2/order";
+
+        var headers = std.StringHashMap([]const u8).init(self.allocator);
+        defer headers.deinit();
+
+        try self.authenticate(&headers);
+
+        const response = try self.base.http_client.post(url, &headers, body.items);
+        defer response.deinit(self.allocator);
+
+        if (response.status != 200) {
+            return error.NetworkError;
+        }
+
+        var parser = json.JsonParser.init(self.allocator);
+        defer parser.deinit();
+
+        const parsed = try parser.parse(response.body);
+        defer parsed.deinit();
+
+        const order_id = parsed.object.get("id").?.string orelse return error.NetworkError;
+        const status = parsed.object.get("status").?.string orelse return error.NetworkError;
+
+        return Order{
+            .id = try self.allocator.dupe(u8, order_id),
+            .symbol = try self.allocator.dupe(u8, symbol),
+            .type = try self.allocator.dupe(u8, type_str),
+            .side = try self.allocator.dupe(u8, side_str),
+            .price = price,
+            .amount = amount,
+            .status = try self.allocator.dupe(u8, status),
+            .timestamp = std.time.milliTimestamp(),
+            .info = parsed,
+        };
+        }
+
+        pub fn cancelOrder(self: *HitBTC, order_id: []const u8, symbol: []const u8) !Order {
+        if (self.base.auth_config.apiKey == null or self.base.auth_config.apiSecret == null) {
+            return error.AuthenticationRequired;
+        }
+
+        const url = try std.fmt.allocPrint(self.allocator, "https://api.hitbtc.com/api/2/order/{s}", .{ order_id });
+        defer self.allocator.free(url);
+
+        var headers = std.StringHashMap([]const u8).init(self.allocator);
+        defer headers.deinit();
+
+        try self.authenticate(&headers);
+
+        const response = try self.base.http_client.delete(url, &headers);
+        defer response.deinit(self.allocator);
+
+        if (response.status != 200) {
+            return error.NetworkError;
+        }
+
+        var parser = json.JsonParser.init(self.allocator);
+        defer parser.deinit();
+
+        const parsed = try parser.parse(response.body);
+        defer parsed.deinit();
+
+        const status = parsed.object.get("status").?.string orelse return error.NetworkError;
+
+        return Order{
+            .id = try self.allocator.dupe(u8, order_id),
+            .symbol = try self.allocator.dupe(u8, symbol),
+            .status = try self.allocator.dupe(u8, status),
+            .timestamp = std.time.milliTimestamp(),
+            .info = parsed,
+        };
+        }
+
+        pub fn fetchOrder(self: *HitBTC, order_id: []const u8, symbol: []const u8) !Order {
+        if (self.base.auth_config.apiKey == null or self.base.auth_config.apiSecret == null) {
+            return error.AuthenticationRequired;
+        }
+
+        const url = try std.fmt.allocPrint(self.allocator, "https://api.hitbtc.com/api/2/order/{s}", .{ order_id });
+        defer self.allocator.free(url);
+
+        var headers = std.StringHashMap([]const u8).init(self.allocator);
+        defer headers.deinit();
+
+        try self.authenticate(&headers);
+
+        const response = try self.base.http_client.get(url, &headers);
+        defer response.deinit(self.allocator);
+
+        if (response.status != 200) {
+            return error.NetworkError;
+        }
+
+        var parser = json.JsonParser.init(self.allocator);
+        defer parser.deinit();
+
+        const parsed = try parser.parse(response.body);
+        defer parsed.deinit();
+
+        const status = parsed.object.get("status").?.string orelse return error.NetworkError;
+        const type_str = parsed.object.get("type").?.string orelse return error.NetworkError;
+        const side_str = parsed.object.get("side").?.string orelse return error.NetworkError;
+        const price = parsed.object.get("price").?.number.asFloat();
+        const quantity = parsed.object.get("quantity").?.number.asFloat();
+
+        return Order{
+            .id = try self.allocator.dupe(u8, order_id),
+            .symbol = try self.allocator.dupe(u8, symbol),
+            .type = try self.allocator.dupe(u8, type_str),
+            .side = try self.allocator.dupe(u8, side_str),
+            .price = price,
+            .amount = quantity,
+            .status = try self.allocator.dupe(u8, status),
+            .timestamp = std.time.milliTimestamp(),
+            .info = parsed,
+        };
+        }
+
+        pub fn fetchOpenOrders(self: *HitBTC, symbol: ?[]const u8) ![]Order {
+        if (self.base.auth_config.apiKey == null or self.base.auth_config.apiSecret == null) {
+            return error.AuthenticationRequired;
+        }
+
+        var url = "https://api.hitbtc.com/api/2/order";
+        if (symbol) |s| {
+            const market = self.base.findMarket(s) orelse return error.SymbolNotFound;
+            url = try std.fmt.allocPrint(self.allocator, "https://api.hitbtc.com/api/2/order?symbol={s}", .{ market.id });
+            defer self.allocator.free(url);
+        }
+
+        var headers = std.StringHashMap([]const u8).init(self.allocator);
+        defer headers.deinit();
+
+        try self.authenticate(&headers);
+
+        const response = try self.base.http_client.get(url, &headers);
+        defer response.deinit(self.allocator);
+
+        if (response.status != 200) {
+            return error.NetworkError;
+        }
+
+        var parser = json.JsonParser.init(self.allocator);
+        defer parser.deinit();
+
+        const parsed = try parser.parse(response.body);
+        defer parsed.deinit();
+
+        var orders = std.ArrayList(Order).init(self.allocator);
+
+        for (parsed.array.items) |order_data| {
+            const order_id = order_data.object.get("id").?.string orelse continue;
+            const order_symbol = order_data.object.get("symbol").?.string orelse continue;
+            const status = order_data.object.get("status").?.string orelse continue;
+            const type_str = order_data.object.get("type").?.string orelse continue;
+            const side_str = order_data.object.get("side").?.string orelse continue;
+            const price = order_data.object.get("price").?.number.asFloat();
+            const quantity = order_data.object.get("quantity").?.number.asFloat();
+
+            try orders.append(Order{
+                .id = try self.allocator.dupe(u8, order_id),
+                .symbol = try self.allocator.dupe(u8, order_symbol),
+                .type = try self.allocator.dupe(u8, type_str),
+                .side = try self.allocator.dupe(u8, side_str),
+                .price = price,
+                .amount = quantity,
+                .status = try self.allocator.dupe(u8, status),
+                .timestamp = std.time.milliTimestamp(),
+                .info = order_data,
+            });
+        }
+
+        return orders.toOwnedSlice();
+        }
+
+        pub fn fetchClosedOrders(self: *HitBTC, symbol: ?[]const u8, since: ?i64, limit: ?u32) ![]Order {
+        if (self.base.auth_config.apiKey == null or self.base.auth_config.apiSecret == null) {
+            return error.AuthenticationRequired;
+        }
+
+        var query = std.ArrayList(u8).init(self.allocator);
+        defer query.deinit();
+
+        if (symbol) |s| {
+            const market = self.base.findMarket(s) orelse return error.SymbolNotFound;
+            try query.appendSlice(try std.fmt.allocPrint(self.allocator, "symbol={s}", .{ market.id }));
+        }
+
+        if (since) |s| {
+            if (query.len > 0) try query.append('&');
+            try query.appendSlice(try std.fmt.allocPrint(self.allocator, "from={d}", .{ s }));
+        }
+
+        if (limit) |l| {
+            if (query.len > 0) try query.append('&');
+            try query.appendSlice(try std.fmt.allocPrint(self.allocator, "limit={d}", .{ l }));
+        }
+
+        var url = "https://api.hitbtc.com/api/2/history/order";
+        if (query.len > 0) {
+            url = try std.fmt.allocPrint(self.allocator, "https://api.hitbtc.com/api/2/history/order?{s}", .{ query.items });
+            defer self.allocator.free(url);
+        }
+
+        var headers = std.StringHashMap([]const u8).init(self.allocator);
+        defer headers.deinit();
+
+        try self.authenticate(&headers);
+
+        const response = try self.base.http_client.get(url, &headers);
+        defer response.deinit(self.allocator);
+
+        if (response.status != 200) {
+            return error.NetworkError;
+        }
+
+        var parser = json.JsonParser.init(self.allocator);
+        defer parser.deinit();
+
+        const parsed = try parser.parse(response.body);
+        defer parsed.deinit();
+
+        var orders = std.ArrayList(Order).init(self.allocator);
+
+        for (parsed.array.items) |order_data| {
+            const order_id = order_data.object.get("id").?.string orelse continue;
+            const order_symbol = order_data.object.get("symbol").?.string orelse continue;
+            const status = order_data.object.get("status").?.string orelse continue;
+            const type_str = order_data.object.get("type").?.string orelse continue;
+            const side_str = order_data.object.get("side").?.string orelse continue;
+            const price = order_data.object.get("price").?.number.asFloat();
+            const quantity = order_data.object.get("quantity").?.number.asFloat();
+
+            try orders.append(Order{
+                .id = try self.allocator.dupe(u8, order_id),
+                .symbol = try self.allocator.dupe(u8, order_symbol),
+                .type = try self.allocator.dupe(u8, type_str),
+                .side = try self.allocator.dupe(u8, side_str),
+                .price = price,
+                .amount = quantity,
+                .status = try self.allocator.dupe(u8, status),
+                .timestamp = std.time.milliTimestamp(),
+                .info = order_data,
+            });
+        }
+
+        return orders.toOwnedSlice();
+        }
+
+        // Authentication
+        fn authenticate(self: *HitBTC, headers: *std.StringHashMap([]const u8)) !void {
         const api_key = self.base.auth_config.apiKey orelse return error.AuthenticationRequired;
         const api_secret = self.base.auth_config.apiSecret orelse return error.AuthenticationRequired;
         

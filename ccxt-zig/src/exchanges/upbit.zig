@@ -335,10 +335,288 @@ pub const Upbit = struct {
         }
         
         return balances.toOwnedSlice();
-    }
-    
-    // Authentication (Upbit uses JWT token)
-    fn authenticate(self: *Upbit, headers: *std.StringHashMap([]const u8)) !void {
+        }
+
+        // Order management methods
+        pub fn createOrder(
+        self: *Upbit,
+        symbol: []const u8,
+        type_str: []const u8,
+        side_str: []const u8,
+        amount: f64,
+        price: ?f64,
+        params: ?std.StringHashMap([]const u8),
+        ) !Order {
+        _ = params;
+        if (self.base.auth_config.apiKey == null or self.base.auth_config.apiSecret == null) {
+            return error.AuthenticationRequired;
+        }
+
+        const market = self.base.findMarket(symbol) orelse return error.SymbolNotFound;
+
+        var body = std.ArrayList(u8).init(self.allocator);
+        defer body.deinit();
+
+        try body.appendSlice(try std.fmt.allocPrint(self.allocator,
+            "market={s}&side={s}&volume={d}&ord_type={s}",
+            .{ market.id, side_str, amount, type_str }));
+
+        if (price) |p| {
+            try body.appendSlice(try std.fmt.allocPrint(self.allocator, "&price={d}", .{p}));
+        }
+
+        const url = "https://api.upbit.com/v1/orders";
+
+        var headers = std.StringHashMap([]const u8).init(self.allocator);
+        defer headers.deinit();
+
+        try self.authenticate(&headers);
+
+        const response = try self.base.http_client.post(url, &headers, body.items);
+        defer response.deinit(self.allocator);
+
+        if (response.status != 200) {
+            return error.NetworkError;
+        }
+
+        var parser = json.JsonParser.init(self.allocator);
+        defer parser.deinit();
+
+        const parsed = try parser.parse(response.body);
+        defer parsed.deinit();
+
+        const uuid = parsed.object.get("uuid").?.string orelse return error.NetworkError;
+
+        return Order{
+            .id = try self.allocator.dupe(u8, uuid),
+            .symbol = try self.allocator.dupe(u8, symbol),
+            .type = try self.allocator.dupe(u8, type_str),
+            .side = try self.allocator.dupe(u8, side_str),
+            .price = price,
+            .amount = amount,
+            .status = try self.allocator.dupe(u8, "open"),
+            .timestamp = std.time.milliTimestamp(),
+            .info = parsed,
+        };
+        }
+
+        pub fn cancelOrder(self: *Upbit, order_id: []const u8, symbol: []const u8) !Order {
+        if (self.base.auth_config.apiKey == null or self.base.auth_config.apiSecret == null) {
+            return error.AuthenticationRequired;
+        }
+
+        const url = try std.fmt.allocPrint(self.allocator, "https://api.upbit.com/v1/order?uuid={s}", .{ order_id });
+        defer self.allocator.free(url);
+
+        var headers = std.StringHashMap([]const u8).init(self.allocator);
+        defer headers.deinit();
+
+        try self.authenticate(&headers);
+
+        const response = try self.base.http_client.delete(url, &headers);
+        defer response.deinit(self.allocator);
+
+        if (response.status != 200) {
+            return error.NetworkError;
+        }
+
+        var parser = json.JsonParser.init(self.allocator);
+        defer parser.deinit();
+
+        const parsed = try parser.parse(response.body);
+        defer parsed.deinit();
+
+        const uuid = parsed.object.get("uuid").?.string orelse return error.NetworkError;
+        const state = parsed.object.get("state").?.string orelse return error.NetworkError;
+
+        return Order{
+            .id = try self.allocator.dupe(u8, uuid),
+            .symbol = try self.allocator.dupe(u8, symbol),
+            .status = try self.allocator.dupe(u8, state),
+            .timestamp = std.time.milliTimestamp(),
+            .info = parsed,
+        };
+        }
+
+        pub fn fetchOrder(self: *Upbit, order_id: []const u8, symbol: []const u8) !Order {
+        if (self.base.auth_config.apiKey == null or self.base.auth_config.apiSecret == null) {
+            return error.AuthenticationRequired;
+        }
+
+        const url = try std.fmt.allocPrint(self.allocator, "https://api.upbit.com/v1/order?uuid={s}", .{ order_id });
+        defer self.allocator.free(url);
+
+        var headers = std.StringHashMap([]const u8).init(self.allocator);
+        defer headers.deinit();
+
+        try self.authenticate(&headers);
+
+        const response = try self.base.http_client.get(url, &headers);
+        defer response.deinit(self.allocator);
+
+        if (response.status != 200) {
+            return error.NetworkError;
+        }
+
+        var parser = json.JsonParser.init(self.allocator);
+        defer parser.deinit();
+
+        const parsed = try parser.parse(response.body);
+        defer parsed.deinit();
+
+        const uuid = parsed.object.get("uuid").?.string orelse return error.NetworkError;
+        const state = parsed.object.get("state").?.string orelse return error.NetworkError;
+        const ord_type = parsed.object.get("ord_type").?.string orelse return error.NetworkError;
+        const side = parsed.object.get("side").?.string orelse return error.NetworkError;
+        const price = parsed.object.get("price").?.number.asFloat();
+        const volume = parsed.object.get("volume").?.number.asFloat();
+
+        return Order{
+            .id = try self.allocator.dupe(u8, uuid),
+            .symbol = try self.allocator.dupe(u8, symbol),
+            .type = try self.allocator.dupe(u8, ord_type),
+            .side = try self.allocator.dupe(u8, side),
+            .price = price,
+            .amount = volume,
+            .status = try self.allocator.dupe(u8, state),
+            .timestamp = std.time.milliTimestamp(),
+            .info = parsed,
+        };
+        }
+
+        pub fn fetchOpenOrders(self: *Upbit, symbol: ?[]const u8) ![]Order {
+        if (self.base.auth_config.apiKey == null or self.base.auth_config.apiSecret == null) {
+            return error.AuthenticationRequired;
+        }
+
+        var url = "https://api.upbit.com/v1/orders";
+        if (symbol) |s| {
+            const market = self.base.findMarket(s) orelse return error.SymbolNotFound;
+            url = try std.fmt.allocPrint(self.allocator, "https://api.upbit.com/v1/orders?market={s}", .{ market.id });
+            defer self.allocator.free(url);
+        }
+
+        var headers = std.StringHashMap([]const u8).init(self.allocator);
+        defer headers.deinit();
+
+        try self.authenticate(&headers);
+
+        const response = try self.base.http_client.get(url, &headers);
+        defer response.deinit(self.allocator);
+
+        if (response.status != 200) {
+            return error.NetworkError;
+        }
+
+        var parser = json.JsonParser.init(self.allocator);
+        defer parser.deinit();
+
+        const parsed = try parser.parse(response.body);
+        defer parsed.deinit();
+
+        var orders = std.ArrayList(Order).init(self.allocator);
+
+        for (parsed.array.items) |order_data| {
+            const uuid = order_data.object.get("uuid").?.string orelse continue;
+            const market = order_data.object.get("market").?.string orelse continue;
+            const state = order_data.object.get("state").?.string orelse continue;
+            const ord_type = order_data.object.get("ord_type").?.string orelse continue;
+            const side = order_data.object.get("side").?.string orelse continue;
+            const price = order_data.object.get("price").?.number.asFloat();
+            const volume = order_data.object.get("volume").?.number.asFloat();
+
+            try orders.append(Order{
+                .id = try self.allocator.dupe(u8, uuid),
+                .symbol = try self.allocator.dupe(u8, market),
+                .type = try self.allocator.dupe(u8, ord_type),
+                .side = try self.allocator.dupe(u8, side),
+                .price = price,
+                .amount = volume,
+                .status = try self.allocator.dupe(u8, state),
+                .timestamp = std.time.milliTimestamp(),
+                .info = order_data,
+            });
+        }
+
+        return orders.toOwnedSlice();
+        }
+
+        pub fn fetchClosedOrders(self: *Upbit, symbol: ?[]const u8, since: ?i64, limit: ?u32) ![]Order {
+        if (self.base.auth_config.apiKey == null or self.base.auth_config.apiSecret == null) {
+            return error.AuthenticationRequired;
+        }
+
+        var query = std.ArrayList(u8).init(self.allocator);
+        defer query.deinit();
+
+        if (symbol) |s| {
+            const market = self.base.findMarket(s) orelse return error.SymbolNotFound;
+            try query.appendSlice(try std.fmt.allocPrint(self.allocator, "market={s}", .{ market.id }));
+        }
+
+        if (since) |s| {
+            if (query.len > 0) try query.append('&');
+            try query.appendSlice(try std.fmt.allocPrint(self.allocator, "state=cancel,done&from={d}", .{ s }));
+        }
+
+        if (limit) |l| {
+            if (query.len > 0) try query.append('&');
+            try query.appendSlice(try std.fmt.allocPrint(self.allocator, "limit={d}", .{ l }));
+        }
+
+        var url = "https://api.upbit.com/v1/orders";
+        if (query.len > 0) {
+            url = try std.fmt.allocPrint(self.allocator, "https://api.upbit.com/v1/orders?{s}", .{ query.items });
+            defer self.allocator.free(url);
+        }
+
+        var headers = std.StringHashMap([]const u8).init(self.allocator);
+        defer headers.deinit();
+
+        try self.authenticate(&headers);
+
+        const response = try self.base.http_client.get(url, &headers);
+        defer response.deinit(self.allocator);
+
+        if (response.status != 200) {
+            return error.NetworkError;
+        }
+
+        var parser = json.JsonParser.init(self.allocator);
+        defer parser.deinit();
+
+        const parsed = try parser.parse(response.body);
+        defer parsed.deinit();
+
+        var orders = std.ArrayList(Order).init(self.allocator);
+
+        for (parsed.array.items) |order_data| {
+            const uuid = order_data.object.get("uuid").?.string orelse continue;
+            const market = order_data.object.get("market").?.string orelse continue;
+            const state = order_data.object.get("state").?.string orelse continue;
+            const ord_type = order_data.object.get("ord_type").?.string orelse continue;
+            const side = order_data.object.get("side").?.string orelse continue;
+            const price = order_data.object.get("price").?.number.asFloat();
+            const volume = order_data.object.get("volume").?.number.asFloat();
+
+            try orders.append(Order{
+                .id = try self.allocator.dupe(u8, uuid),
+                .symbol = try self.allocator.dupe(u8, market),
+                .type = try self.allocator.dupe(u8, ord_type),
+                .side = try self.allocator.dupe(u8, side),
+                .price = price,
+                .amount = volume,
+                .status = try self.allocator.dupe(u8, state),
+                .timestamp = std.time.milliTimestamp(),
+                .info = order_data,
+            });
+        }
+
+        return orders.toOwnedSlice();
+        }
+
+        // Authentication (Upbit uses JWT token)
+        fn authenticate(self: *Upbit, headers: *std.StringHashMap([]const u8)) !void {
         const access_key = self.base.auth_config.apiKey orelse return error.AuthenticationRequired;
         const secret_key = self.base.auth_config.apiSecret orelse return error.AuthenticationRequired;
         
