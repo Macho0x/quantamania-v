@@ -430,7 +430,273 @@ pub const HTX = struct {
         
         return balances.toOwnedSlice();
     }
-    
+
+    // Order management methods
+    pub fn createOrder(
+        self: *HTX,
+        symbol: []const u8,
+        type_str: []const u8,
+        side_str: []const u8,
+        amount: f64,
+        price: ?f64,
+        params: ?std.StringHashMap([]const u8),
+    ) !Order {
+        _ = params;
+        if (self.api_key == null or self.secret_key == null) {
+            return error.AuthenticationRequired;
+        }
+
+        const market = self.base.findMarket(symbol) orelse return error.SymbolNotFound;
+
+        var body = std.ArrayList(u8).init(self.allocator);
+        defer body.deinit();
+
+        try body.appendSlice(try std.fmt.allocPrint(self.allocator,
+            "symbol={s}&account-id={s}&type={s}&amount={d}",
+            .{ market.id, self.base.account_id, type_str, amount }));
+
+        if (price) |p| {
+            try body.appendSlice(try std.fmt.allocPrint(self.allocator, "&price={d}", .{p}));
+        }
+
+        const url = try std.fmt.allocPrint(self.allocator, "{s}/v1/order/orders/place", .{ self.base.api_url });
+        defer self.allocator.free(url);
+
+        try self.sign("/v1/order/orders/place", body.items);
+
+        const response = try self.base.http_client.post(url, &self.base.headers, body.items);
+        defer response.deinit(self.allocator);
+
+        if (response.status != 200) {
+            return error.NetworkError;
+        }
+
+        var parser = json.JsonParser.init(self.allocator);
+        defer parser.deinit();
+
+        const parsed = try parser.parse(response.body);
+        defer parsed.deinit();
+
+        const data = parsed.object.get("data") orelse return error.NetworkError;
+        const order_id = data.string orelse return error.NetworkError;
+
+        return Order{
+            .id = try self.allocator.dupe(u8, order_id),
+            .symbol = try self.allocator.dupe(u8, symbol),
+            .type = try self.allocator.dupe(u8, type_str),
+            .side = try self.allocator.dupe(u8, side_str),
+            .price = price,
+            .amount = amount,
+            .status = try self.allocator.dupe(u8, "open"),
+            .timestamp = std.time.milliTimestamp(),
+            .info = parsed,
+        };
+    }
+
+    pub fn cancelOrder(self: *HTX, order_id: []const u8, symbol: []const u8) !Order {
+        if (self.api_key == null or self.secret_key == null) {
+            return error.AuthenticationRequired;
+        }
+
+        const url = try std.fmt.allocPrint(self.allocator, "{s}/v1/order/orders/{s}/submitcancel", .{ self.base.api_url, order_id });
+        defer self.allocator.free(url);
+
+        try self.sign("/v1/order/orders/{s}/submitcancel", .{ order_id });
+
+        const response = try self.base.http_client.post(url, &self.base.headers, "");
+        defer response.deinit(self.allocator);
+
+        if (response.status != 200) {
+            return error.NetworkError;
+        }
+
+        var parser = json.JsonParser.init(self.allocator);
+        defer parser.deinit();
+
+        const parsed = try parser.parse(response.body);
+        defer parsed.deinit();
+
+        const data = parsed.object.get("data") orelse return error.NetworkError;
+        const status = data.object.get("status").?.string orelse return error.NetworkError;
+
+        return Order{
+            .id = try self.allocator.dupe(u8, order_id),
+            .symbol = try self.allocator.dupe(u8, symbol),
+            .status = try self.allocator.dupe(u8, status),
+            .timestamp = std.time.milliTimestamp(),
+            .info = parsed,
+        };
+    }
+
+    pub fn fetchOrder(self: *HTX, order_id: []const u8, symbol: []const u8) !Order {
+        if (self.api_key == null or self.secret_key == null) {
+            return error.AuthenticationRequired;
+        }
+
+        const url = try std.fmt.allocPrint(self.allocator, "{s}/v1/order/orders/{s}", .{ self.base.api_url, order_id });
+        defer self.allocator.free(url);
+
+        try self.sign("/v1/order/orders/{s}", .{ order_id });
+
+        const response = try self.base.http_client.get(url, &self.base.headers);
+        defer response.deinit(self.allocator);
+
+        if (response.status != 200) {
+            return error.NetworkError;
+        }
+
+        var parser = json.JsonParser.init(self.allocator);
+        defer parser.deinit();
+
+        const parsed = try parser.parse(response.body);
+        defer parsed.deinit();
+
+        const data = parsed.object.get("data") orelse return error.NetworkError;
+        const status = data.object.get("status").?.string orelse return error.NetworkError;
+        const type_str = data.object.get("type").?.string orelse return error.NetworkError;
+        const side_str = data.object.get("direction").?.string orelse return error.NetworkError;
+        const price = data.object.get("price").?.number.asFloat();
+        const amount = data.object.get("amount").?.number.asFloat();
+
+        return Order{
+            .id = try self.allocator.dupe(u8, order_id),
+            .symbol = try self.allocator.dupe(u8, symbol),
+            .type = try self.allocator.dupe(u8, type_str),
+            .side = try self.allocator.dupe(u8, side_str),
+            .price = price,
+            .amount = amount,
+            .status = try self.allocator.dupe(u8, status),
+            .timestamp = std.time.milliTimestamp(),
+            .info = parsed,
+        };
+    }
+
+    pub fn fetchOpenOrders(self: *HTX, symbol: ?[]const u8) ![]Order {
+        if (self.api_key == null or self.secret_key == null) {
+            return error.AuthenticationRequired;
+        }
+
+        var url = try std.fmt.allocPrint(self.allocator, "{s}/v1/order/openOrders", .{ self.base.api_url });
+        defer self.allocator.free(url);
+
+        if (symbol) |s| {
+            const market = self.base.findMarket(s) orelse return error.SymbolNotFound;
+            url = try std.fmt.allocPrint(self.allocator, "{s}/v1/order/openOrders?symbol={s}", .{ self.base.api_url, market.id });
+            defer self.allocator.free(url);
+        }
+
+        try self.sign("/v1/order/openOrders", "");
+
+        const response = try self.base.http_client.get(url, &self.base.headers);
+        defer response.deinit(self.allocator);
+
+        if (response.status != 200) {
+            return error.NetworkError;
+        }
+
+        var parser = json.JsonParser.init(self.allocator);
+        defer parser.deinit();
+
+        const parsed = try parser.parse(response.body);
+        defer parsed.deinit();
+
+        const data = parsed.object.get("data") orelse return error.NetworkError;
+        var orders = std.ArrayList(Order).init(self.allocator);
+
+        for (data.array.items) |order_data| {
+            const order_id = order_data.object.get("id").?.string orelse continue;
+            const order_symbol = order_data.object.get("symbol").?.string orelse continue;
+            const status = order_data.object.get("status").?.string orelse continue;
+            const type_str = order_data.object.get("type").?.string orelse continue;
+            const side_str = order_data.object.get("direction").?.string orelse continue;
+            const price = order_data.object.get("price").?.number.asFloat();
+            const amount = order_data.object.get("amount").?.number.asFloat();
+
+            try orders.append(Order{
+                .id = try self.allocator.dupe(u8, order_id),
+                .symbol = try self.allocator.dupe(u8, order_symbol),
+                .type = try self.allocator.dupe(u8, type_str),
+                .side = try self.allocator.dupe(u8, side_str),
+                .price = price,
+                .amount = amount,
+                .status = try self.allocator.dupe(u8, status),
+                .timestamp = std.time.milliTimestamp(),
+                .info = order_data,
+            });
+        }
+
+        return orders.toOwnedSlice();
+    }
+
+    pub fn fetchClosedOrders(self: *HTX, symbol: ?[]const u8, since: ?i64, limit: ?u32) ![]Order {
+        if (self.api_key == null or self.secret_key == null) {
+            return error.AuthenticationRequired;
+        }
+
+        var query = std.ArrayList(u8).init(self.allocator);
+        defer query.deinit();
+
+        if (symbol) |s| {
+            const market = self.base.findMarket(s) orelse return error.SymbolNotFound;
+            try query.appendSlice(try std.fmt.allocPrint(self.allocator, "symbol={s}", .{ market.id }));
+        }
+
+        if (since) |s| {
+            if (query.len > 0) try query.append('&');
+            try query.appendSlice(try std.fmt.allocPrint(self.allocator, "start-time={d}", .{ s }));
+        }
+
+        if (limit) |l| {
+            if (query.len > 0) try query.append('&');
+            try query.appendSlice(try std.fmt.allocPrint(self.allocator, "size={d}", .{ l }));
+        }
+
+        var url = try std.fmt.allocPrint(self.allocator, "{s}/v1/order/orders?{s}", .{ self.base.api_url, query.items });
+        defer self.allocator.free(url);
+
+        try self.sign("/v1/order/orders", query.items);
+
+        const response = try self.base.http_client.get(url, &self.base.headers);
+        defer response.deinit(self.allocator);
+
+        if (response.status != 200) {
+            return error.NetworkError;
+        }
+
+        var parser = json.JsonParser.init(self.allocator);
+        defer parser.deinit();
+
+        const parsed = try parser.parse(response.body);
+        defer parsed.deinit();
+
+        const data = parsed.object.get("data") orelse return error.NetworkError;
+        var orders = std.ArrayList(Order).init(self.allocator);
+
+        for (data.array.items) |order_data| {
+            const order_id = order_data.object.get("id").?.string orelse continue;
+            const order_symbol = order_data.object.get("symbol").?.string orelse continue;
+            const status = order_data.object.get("status").?.string orelse continue;
+            const type_str = order_data.object.get("type").?.string orelse continue;
+            const side_str = order_data.object.get("direction").?.string orelse continue;
+            const price = order_data.object.get("price").?.number.asFloat();
+            const amount = order_data.object.get("amount").?.number.asFloat();
+
+            try orders.append(Order{
+                .id = try self.allocator.dupe(u8, order_id),
+                .symbol = try self.allocator.dupe(u8, order_symbol),
+                .type = try self.allocator.dupe(u8, type_str),
+                .side = try self.allocator.dupe(u8, side_str),
+                .price = price,
+                .amount = amount,
+                .status = try self.allocator.dupe(u8, status),
+                .timestamp = std.time.milliTimestamp(),
+                .info = order_data,
+            });
+        }
+
+        return orders.toOwnedSlice();
+    }
+
     // Exchange-specific helpers
     fn formatTimestamp(self: *HTX, timestamp: i64) ![]const u8 {
         const dt = std.time.epoch.Milliseconds{ .milliseconds = @as(u64, @intCast(timestamp)) };

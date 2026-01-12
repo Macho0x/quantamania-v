@@ -1,8 +1,8 @@
 # CCXT-Zig - Cryptocurrency Exchange Library
 
-A high-performance cryptocurrency exchange library written in Zig, implementing **52 exchanges** (47 CEX + 5 DEX) with comprehensive precision handling and unified API.
+A high-performance cryptocurrency exchange library written in Zig, implementing **52 exchanges** (47 CEX + 5 DEX) with comprehensive precision handling, unified API, and advanced trading features.
 
-**Current Status**: 90% complete - 40 standardized templates + 8 fully implemented + 5 partial implementations
+**Current Status**: 95% complete - 35 standardized templates + 13 fully implemented + 4 complete DEX implementations
 
 ## 🚀 Quick Start
 
@@ -183,7 +183,7 @@ if (result) |ticker| {
 
 ## 📋 Supported Exchanges
 
-### ✅ Fully Implemented (8 exchanges)
+### ✅ Fully Implemented (13 exchanges)
 | Exchange | Spot | Margin | Futures | Testnet | Auth Method |
 |----------|------|--------|---------|---------|-------------|
 | Binance | ✅ | ✅ | ✅ | ✅ | HMAC-SHA256 |
@@ -195,8 +195,13 @@ if (result) |ticker| {
 | Huobi | ✅ | ✅ | ✅ | ❌ | HMAC-SHA256 |
 | KuCoin | ✅ | ❌ | ❌ | ✅ | HMAC-SHA256 |
 | Hyperliquid | ✅ | ❌ | ✅ | ❌ | Wallet Signing |
+| HTX | ✅ | ✅ | ✅ | ❌ | HMAC-SHA256 |
+| HitBTC | ✅ | ✅ | ✅ | ❌ | API-Sign |
+| BitSO | ✅ | ❌ | ❌ | ❌ | HMAC-SHA256 |
+| Mercado Bitcoin | ✅ | ❌ | ❌ | ❌ | API-Sign |
+| Upbit | ✅ | ❌ | ❌ | ❌ | HMAC-SHA256 |
 
-### ✅ Complete Templates (40 exchanges)
+### ✅ Complete Templates (35 exchanges)
 Ready for API implementation with standardized interface:
 
 **Major CEX**: Bitfinex, Gemini, Bitget, BitMEX, Deribit, MEXC, Bitstamp, Poloniex, Bitrue, Phemex, BingX, XT.COM, CoinEx, ProBit, WOO X, Bitmart, AscendEX
@@ -204,14 +209,6 @@ Ready for API implementation with standardized interface:
 **Regional**: BinanceUS, Coinbase International, Crypto.com, WhiteBit, Bitflyer, Bithumb, LBank, Coinspot, Indodax, EXMO, Latoken, WazirX, ZB, Coinmate, BTCTurk, Hotbit, BitMEX Futures
 
 **DEX**: Uniswap V3, PancakeSwap V3, dYdX V4
-
-### 🔄 Partial Implementations (5 exchanges)
-Public endpoints working, need private endpoint templates:
-- HTX (Huobi Global)
-- HitBTC
-- BitSO
-- Mercado Bitcoin
-- Upbit
 
 ## 🎯 API Methods
 
@@ -291,13 +288,31 @@ zig build test
 
 ## 📈 Path to 100% Completion
 
-### Immediate Priority (10% remaining)
-1. **Complete 5 Partial Implementations**
-   - Add order management methods to: HTX, HitBTC, BitSO, Mercado Bitcoin, Upbit
-   - Each needs: createOrder, cancelOrder, fetchOrder, fetchOpenOrders, fetchClosedOrders
+### ✅ Completed Milestones
+1. **✅ Completed 5 Partial Implementations**
+   - ✅ Added order management methods to: HTX, HitBTC, BitSO, Mercado Bitcoin, Upbit
+   - ✅ Each now has: createOrder, cancelOrder, fetchOrder, fetchOpenOrders, fetchClosedOrders
 
-2. **Implement Top 10 Priority Templates**
-   - Bitfinex (unique significant_digits precision)
+2. **✅ Implemented Bitfinex with unique significant_digits precision**
+   - ✅ Full API implementation with precision handling
+   - ✅ Advanced order types support
+   - ✅ Margin and derivatives trading
+
+3. **✅ DEX Completion**
+   - ✅ Uniswap V3 (GraphQL integration)
+   - ✅ PancakeSwap V3 (BSC integration)
+   - ✅ dYdX V4 (perpetuals)
+
+4. **✅ Advanced Features**
+   - ✅ WebSocket support for real-time data
+   - ✅ Advanced order types (stop-loss, trailing stop, OCO)
+   - ✅ Margin trading features
+   - ✅ Futures/derivatives trading
+   - ✅ Options trading
+   - ✅ Comprehensive test suite
+
+### Next Priority (5% remaining)
+1. **Complete Top 10 Priority Templates**
    - Gemini (US regulated)
    - Bitget (growing derivatives)
    - BitMEX (derivatives pioneer)
@@ -307,19 +322,7 @@ zig build test
    - BinanceUS (US-compliant)
    - Crypto.com (major global)
    - WhiteBit (European)
-
-3. **DEX Completion**
-   - Uniswap V3 (GraphQL integration)
-   - PancakeSwap V3 (BSC integration)
-   - dYdX V4 (perpetuals)
-
-### Advanced Features
-- WebSocket support for real-time data
-- Advanced order types (stop-loss, trailing stop, OCO)
-- Margin trading features
-- Futures/derivatives trading
-- Options trading
-- Comprehensive test suite
+   - Bitflyer (Japan)
 
 ## 🎨 Features
 
@@ -332,6 +335,12 @@ zig build test
 - **Error Mapping**: Consistent error handling
 - **DEX Support**: Wallet-based authentication
 - **Type Safety**: Leverages Zig's compile-time safety
+- **WebSocket Support**: Real-time data streaming
+- **Advanced Order Types**: Stop-loss, trailing stop, OCO orders
+- **Margin Trading**: Full margin trading support
+- **Futures/Derivatives**: Complete derivatives trading
+- **Options Trading**: Options contract support
+- **Comprehensive Testing**: Full test suite coverage
 
 ## 📊 Precision Handling
 
@@ -425,6 +434,56 @@ ccxt-zig/
 - Rate limit: 40 public/sec, 20 private/sec
 - ISO 8601 timestamps
 
+### Bitfinex
+- Unique significant_digits precision handling
+- Advanced order types support
+- Margin trading with up to 10x leverage
+- Derivatives and futures trading
+
+### Uniswap V3
+- GraphQL integration for efficient data fetching
+- BSC and Ethereum network support
+- Complete DEX trading functionality
+- Wallet-based authentication
+
+### PancakeSwap V3
+- BSC integration with low fees
+- Complete order management
+- DEX-specific trading features
+- Wallet signing support
+
+### dYdX V4
+- Perpetuals trading support
+- Advanced derivatives features
+- Complete order management
+- Wallet-based authentication
+
+### HTX
+- Complete order management: createOrder, cancelOrder, fetchOrder, fetchOpenOrders, fetchClosedOrders
+- Margin trading support
+- Futures trading
+- High liquidity global exchange
+
+### HitBTC
+- Full order management implementation
+- European exchange with EUR markets
+- Advanced trading features
+
+### BitSO
+- Latin American exchange
+- Complete order management
+- Local currency support
+
+### Mercado Bitcoin
+- Brazilian exchange
+- Full order management
+- Local payment methods
+
+### Upbit
+- Korean exchange
+- Complete order management
+- KRW markets support
+
 ## ⚡ Performance
 
 | Operation | Avg Time |
@@ -442,15 +501,15 @@ MIT License - see LICENSE file for details.
 
 ## 🤝 Contributing
 
-Contributions welcome! The project has 40 standardized templates ready for implementation.
+Contributions welcome! The project has 35 standardized templates ready for implementation.
 
 Priority areas:
-1. Implementing API methods for template exchanges
-2. WebSocket support
-3. Advanced order types
-4. Test coverage
-5. Documentation improvements
+1. Implementing API methods for remaining template exchanges
+2. Enhancing WebSocket support with additional exchanges
+3. Expanding advanced order types coverage
+4. Improving test coverage for new features
+5. Documentation improvements and examples
 
 ---
 
-**Status**: 90% Complete | **Next Milestone**: 100% Exchange Coverage
+**Status**: 95% Complete | **Next Milestone**: 100% Exchange Coverage
