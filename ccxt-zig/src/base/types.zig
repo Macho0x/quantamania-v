@@ -143,6 +143,154 @@ pub fn formatPrice(price: Decimal, precision: u8) []const u8 {
     return formatted;
 }
 
+// Exchange field mapping for exchange-specific API formats
+// Allows exchanges to map their field names (like px, sz) to standard names (price, amount)
+pub const ExchangeFieldMapping = struct {
+    // Core order/trade fields
+    price: []const u8 = "price",
+    amount: []const u8 = "amount",
+    cost: []const u8 = "cost",
+    order_id: []const u8 = "id",
+    client_order_id: []const u8 = "clientOrderId",
+    symbol: []const u8 = "symbol",
+    side: []const u8 = "side",
+    type: []const u8 = "type",
+    timestamp: []const u8 = "timestamp",
+    datetime: []const u8 = "datetime",
+
+    // Order book specific
+    bid_price: []const u8 = "bid",
+    bid_amount: []const u8 = "bidAmount",
+    ask_price: []const u8 = "ask",
+    ask_amount: []const u8 = "askAmount",
+
+    // Ticker specific
+    high: []const u8 = "high24h",
+    low: []const u8 = "low24h",
+    open: []const u8 = "open24h",
+    close: []const u8 = "close",
+    last: []const u8 = "lastPrice",
+    previous_close: []const u8 = "prevClosePrice",
+    change: []const u8 = "changePrice",
+    change_percent: []const u8 = "changePercent",
+    average: []const u8 = "avgPrice",
+    base_volume: []const u8 = "volume24h",
+    quote_volume: []const u8 = "quoteVolume",
+
+    // Balance specific
+    free: []const u8 = "free",
+    used: []const u8 = "used",
+    total: []const u8 = "total",
+
+    // Market info specific
+    tick_size: []const u8 = "tickSize",
+    lot_size: []const u8 = "lotSize",
+    min_size: []const u8 = "minSize",
+    max_size: []const u8 = "maxSize",
+    max_price: []const u8 = "maxPrice",
+    min_price: []const u8 = "minPrice",
+
+    // Order status
+    status: []const u8 = "status",
+    filled: []const u8 = "filled",
+    remaining: []const u8 = "remaining",
+    average_price: []const u8 = "avgPrice",
+
+    // Fee
+    fee: []const u8 = "fee",
+    fee_currency: []const u8 = "feeCurrency",
+
+    // Identifier fields
+    trade_id: []const u8 = "tradeId",
+    order_type: []const u8 = "orderType",
+
+    // Helper function to get field name
+    pub fn getPrice(self: *const ExchangeFieldMapping) []const u8 {
+        return self.price;
+    }
+
+    pub fn getAmount(self: *const ExchangeFieldMapping) []const u8 {
+        return self.amount;
+    }
+
+    pub fn getOrderId(self: *const ExchangeFieldMapping) []const u8 {
+        return self.order_id;
+    }
+
+    pub fn getClientOrderId(self: *const ExchangeFieldMapping) []const u8 {
+        return self.client_order_id;
+    }
+
+    pub fn getSymbol(self: *const ExchangeFieldMapping) []const u8 {
+        return self.symbol;
+    }
+
+    pub fn getSide(self: *const ExchangeFieldMapping) []const u8 {
+        return self.side;
+    }
+
+    pub fn getTimestamp(self: *const ExchangeFieldMapping) []const u8 {
+        return self.timestamp;
+    }
+};
+
+// Standard field mappings for common exchanges
+pub const StandardFieldMapping = ExchangeFieldMapping{};
+
+// OKX uses abbreviated field names (px=price, sz=size)
+pub const OKXFieldMapping = ExchangeFieldMapping{
+    .price = "px",
+    .amount = "sz",
+    .order_id = "ordId",
+    .client_order_id = "clOrdId",
+    .bid_price = "bidPx",
+    .bid_amount = "bidSz",
+    .ask_price = "askPx",
+    .ask_amount = "askSz",
+    .tick_size = "tickSz",
+    .lot_size = "lotSz",
+    .min_size = "minSz",
+    .last = "lastPx",
+    .base_volume = "vol24h",
+    .quote_volume = "volCcy24h",
+    .high = "high24h",
+    .low = "low24h",
+};
+
+// Hyperliquid uses very abbreviated field names
+pub const HyperliquidFieldMapping = ExchangeFieldMapping{
+    .price = "px",
+    .amount = "sz",
+    .order_id = "oid",
+    .client_order_id = "cloid",
+    .symbol = "s",
+    .side = "side",
+    .type = "orderType",
+    .timestamp = "time",
+    .filled = "filledSz",
+    .remaining = "remainingSz",
+    .average_price = "avgPx",
+};
+
+// Bybit uses mixed naming conventions
+pub const BybitFieldMapping = ExchangeFieldMapping{
+    .price = "price",
+    .amount = "qty",
+    .order_id = "orderId",
+    .client_order_id = "orderLinkId",
+    .symbol = "symbol",
+    .side = "side",
+    .type = "orderType",
+    .timestamp = "createdTime",
+    .status = "orderStatus",
+    .filled = "cumExecQty",
+    .remaining = "leavesQty",
+    .average_price = "avgPrice",
+    .base_volume = "volume24h",
+    .tick_size = "priceScale",
+    .lot_size = "baseScale",
+};
+
 // Parse trading pair symbol
 pub fn parsePair(allocator: std.mem.Allocator, symbol: []const u8) !struct { base: []const u8, quote: []const u8 } {
     const delimiter = "/";

@@ -1,9 +1,18 @@
 // Hyperliquid Exchange Implementation
 // Decentralized perpetuals exchange
 // Phase 3.5 - DEX Support
+//
+// Note: Hyperliquid uses exchange-specific field names:
+// - px = price
+// - sz = size/amount
+// - oid = order ID
+// - cloid = client order ID
+// - s = symbol
+// - time = timestamp
 
 const std = @import("std");
 const base = @import("../base/exchange.zig");
+const types = @import("../base/types.zig");
 const models = @import("../models");
 const utils = @import("../utils");
 const errors = @import("../base/errors.zig");
@@ -13,18 +22,49 @@ const http = @import("../base/http.zig");
 pub const Hyperliquid = struct {
     base: base.Exchange,
     allocator: std.mem.Allocator,
-    
+
+    // Hyperliquid-specific field mappings for API format (px, sz, etc.)
+    const HyperliquidFieldNames = struct {
+        pub const PRICE = "px";
+        pub const AMOUNT = "sz";
+        pub const ORDER_ID = "oid";
+        pub const CLIENT_ORDER_ID = "cloid";
+        pub const SYMBOL = "s";
+        pub const SIDE = "side";
+        pub const TYPE = "orderType";
+        pub const TIMESTAMP = "time";
+        pub const FILLED = "filledSz";
+        pub const REMAINING = "remainingSz";
+        pub const AVG_PRICE = "avgPx";
+        pub const BID_PRICE = "bidPx";
+        pub const BID_AMOUNT = "bidSz";
+        pub const ASK_PRICE = "askPx";
+        pub const ASK_AMOUNT = "askSz";
+        pub const LAST_PRICE = "lastPrice";
+        pub const HIGH_24H = "high24h";
+        pub const LOW_24H = "low24h";
+        pub const VOLUME_24H = "volume24h";
+        pub const STATUS = "status";
+        pub const FUNDING_RATE = "fundingRate";
+        pub const OPEN_INTEREST = "openInterest";
+        pub const INDEX_PRICE = "indexPrice";
+        pub const MARK_PRICE = "markPrice";
+    };
+
     pub fn create(allocator: std.mem.Allocator, auth_config: auth.AuthConfig) !Hyperliquid {
         var exchange = Hyperliquid{
             .base = try base.Exchange.init(allocator, "hyperliquid", "https://api.hyperliquid.xyz", auth_config),
             .allocator = allocator,
         };
-        
+
         // Hyperliquid-specific configuration
         exchange.base.rate_limit = 100; // requests per second
         exchange.base.requires_signature = true;
         exchange.base.symbol_separator = "/";
-        
+
+        // Set Hyperliquid field mapping for exchange-specific API formats
+        exchange.base.field_mapping = types.HyperliquidFieldMapping;
+
         return exchange;
     }
     
@@ -38,12 +78,15 @@ pub const Hyperliquid = struct {
             .base = try base.Exchange.init(allocator, "hyperliquid", "https://api.hyperliquid.xyz/testnet", auth_config),
             .allocator = allocator,
         };
-        
+
         // Hyperliquid-specific configuration
         exchange.base.rate_limit = 100; // requests per second
         exchange.base.requires_signature = true;
         exchange.base.symbol_separator = "/";
-        
+
+        // Set Hyperliquid field mapping for exchange-specific API formats
+        exchange.base.field_mapping = types.HyperliquidFieldMapping;
+
         return exchange;
     }
     
@@ -202,118 +245,105 @@ pub const Hyperliquid = struct {
     fn parseTicker(self: *Hyperliquid, json_data: []const u8) !models.Ticker {
         const json = @import("../utils/json.zig");
         var parser = json.JsonParser.init(self.allocator);
-        
+
         const parsed = try parser.parse(json_data);
         const root = parsed.value;
-        
+
         var ticker = try models.Ticker.init(self.allocator);
-        
+
+        // Use Hyperliquid-specific field mappings (px for price, sz for amount)
+        const m = &self.base.field_mapping;
+
         if (parser.hasField(root, "success") and parser.getBool(root.get("success") orelse .{ .bool = false }, false)) {
             if (parser.hasField(root, "data")) {
                 const data = root.get("data") orelse return ticker;
-                
-                // Parse symbol
-                if (parser.hasField(data, "symbol")) {
-                    ticker.symbol = try parser.getString(data.get("symbol") orelse .{ .string = "" }, null) orelse "BTC/USDC";
-                }
-                
-                // Parse price data
-                if (parser.hasField(data, "lastPrice")) {
-                    ticker.last = parser.getFloat(data.get("lastPrice") orelse .{ .float = 0 }, 0);
-                }
-                
-                if (parser.hasField(data, "high24h")) {
-                    ticker.high = parser.getFloat(data.get("high24h") orelse .{ .float = 0 }, 0);
-                }
-                
-                if (parser.hasField(data, "low24h")) {
-                    ticker.low = parser.getFloat(data.get("low24h") orelse .{ .float = 0 }, 0);
-                }
-                
-                if (parser.hasField(data, "bidPrice")) {
-                    ticker.bid = parser.getFloat(data.get("bidPrice") orelse .{ .float = 0 }, 0);
-                }
-                
-                if (parser.hasField(data, "askPrice")) {
-                    ticker.ask = parser.getFloat(data.get("askPrice") orelse .{ .float = 0 }, 0);
-                }
-                
-                if (parser.hasField(data, "volume24h")) {
-                    ticker.baseVolume = parser.getFloat(data.get("volume24h") orelse .{ .float = 0 }, 0);
-                }
-                
-                if (parser.hasField(data, "quoteVolume24h")) {
-                    ticker.quoteVolume = parser.getFloat(data.get("quoteVolume24h") orelse .{ .float = 0 }, 0);
-                }
-                
-                if (parser.hasField(data, "timestamp")) {
-                    ticker.timestamp = parser.getInt(data.get("timestamp") orelse .{ .integer = std.time.milliTimestamp() }, std.time.milliTimestamp());
-                } else {
-                    ticker.timestamp = std.time.milliTimestamp();
-                }
+
+                // Parse symbol (Hyperliquid uses "s" for symbol)
+                const symbol_field = parser.getString(data.get(m.symbol) orelse data.get("s") orelse .{ .string = "" }, null) orelse "";
+                ticker.symbol = try self.allocator.dupe(u8, if (symbol_field.len > 0) symbol_field else "BTC/USDC");
+
+                // Parse price data using Hyperliquid's field names
+                ticker.last = parser.getFloat(data.get(m.last) orelse data.get(HyperliquidFieldNames.LAST_PRICE) orelse .{ .float = 0 }, 0);
+                ticker.high = parser.getFloat(data.get(m.high) orelse data.get(HyperliquidFieldNames.HIGH_24H) orelse .{ .float = 0 }, 0);
+                ticker.low = parser.getFloat(data.get(m.low) orelse data.get(HyperliquidFieldNames.LOW_24H) orelse .{ .float = 0 }, 0);
+
+                // Parse bid/ask using Hyperliquid's bidPx/bidSz format
+                ticker.bid = parser.getFloat(data.get("bidPx") orelse data.get("bid") orelse .{ .float = 0 }, 0);
+                ticker.ask = parser.getFloat(data.get("askPx") orelse data.get("ask") orelse .{ .float = 0 }, 0);
+
+                // Parse volume
+                ticker.baseVolume = parser.getFloat(data.get(m.base_volume) orelse data.get(HyperliquidFieldNames.VOLUME_24H) orelse .{ .float = 0 }, 0);
+
+                // Parse timestamp (Hyperliquid uses "time")
+                const ts_field = data.get(m.timestamp) orelse data.get(HyperliquidFieldNames.TIMESTAMP) orelse .{ .integer = std.time.milliTimestamp() };
+                ticker.timestamp = self.base.parseTimestamp(ts_field, std.time.milliTimestamp());
             }
         }
-        
+
         return ticker;
     }
     
     fn parseOrderBook(self: *Hyperliquid, json_data: []const u8) !models.OrderBook {
         const json = @import("../utils/json.zig");
         var parser = json.JsonParser.init(self.allocator);
-        
+
         const parsed = try parser.parse(json_data);
         const root = parsed.value;
-        
+
         var orderbook = try models.OrderBook.init(self.allocator);
-        
+
+        // Use Hyperliquid-specific field mappings
+        const m = &self.base.field_mapping;
+
         if (parser.hasField(root, "success") and parser.getBool(root.get("success") orelse .{ .bool = false }, false)) {
             if (parser.hasField(root, "data")) {
                 const data = root.get("data") orelse return orderbook;
-                
-                // Parse symbol
-                if (parser.hasField(data, "symbol")) {
-                    orderbook.symbol = try parser.getString(data.get("symbol") orelse .{ .string = "" }, null) orelse "BTC/USDC";
-                }
-                
-                // Parse timestamp
-                if (parser.hasField(data, "timestamp")) {
-                    orderbook.timestamp = parser.getInt(data.get("timestamp") orelse .{ .integer = std.time.milliTimestamp() }, std.time.milliTimestamp());
-                } else {
-                    orderbook.timestamp = std.time.milliTimestamp();
-                }
-                
-                // Parse bids
+
+                // Parse symbol (Hyperliquid uses "s" for symbol)
+                const symbol_field = parser.getString(data.get(m.symbol) orelse data.get("s") orelse .{ .string = "" }, null) orelse "";
+                orderbook.symbol = try self.allocator.dupe(u8, if (symbol_field.len > 0) symbol_field else "BTC/USDC");
+
+                // Parse timestamp (Hyperliquid uses "time")
+                const ts_field = data.get(m.timestamp) orelse data.get(HyperliquidFieldNames.TIMESTAMP) orelse .{ .integer = std.time.milliTimestamp() };
+                orderbook.timestamp = self.base.parseTimestamp(ts_field, std.time.milliTimestamp());
+                orderbook.datetime = try self.base.parseDatetime(self.allocator, orderbook.timestamp);
+
+                // Parse bids (Hyperliquid returns array format: [price, size, ...])
                 if (parser.hasField(data, "bids")) {
                     const bids_array = parser.getArray(data.get("bids") orelse .{ .array = .{ .items = &[_]std.json.Value{} } }, null) orelse return orderbook;
-                    
+
                     for (bids_array) |bid_data| {
                         const bid_array = parser.getArray(bid_data, null) orelse continue;
                         if (bid_array.len >= 2) {
+                            // Hyperliquid uses "px" for price in individual order entries
                             const price = parser.getFloat(bid_array[0], 0);
+                            // Hyperliquid uses "sz" for size in individual order entries
                             const amount = parser.getFloat(bid_array[1], 0);
-                            
+
                             var bid = models.OrderBookEntry{
                                 .price = price,
                                 .amount = amount,
+                                .timestamp = orderbook.timestamp,
                             };
                             try orderbook.bids.append(bid);
                         }
                     }
                 }
-                
-                // Parse asks
+
+                // Parse asks (Hyperliquid returns array format: [price, size, ...])
                 if (parser.hasField(data, "asks")) {
                     const asks_array = parser.getArray(data.get("asks") orelse .{ .array = .{ .items = &[_]std.json.Value{} } }, null) orelse return orderbook;
-                    
+
                     for (asks_array) |ask_data| {
                         const ask_array = parser.getArray(ask_data, null) orelse continue;
                         if (ask_array.len >= 2) {
                             const price = parser.getFloat(ask_array[0], 0);
                             const amount = parser.getFloat(ask_array[1], 0);
-                            
+
                             var ask = models.OrderBookEntry{
                                 .price = price,
                                 .amount = amount,
+                                .timestamp = orderbook.timestamp,
                             };
                             try orderbook.asks.append(ask);
                         }
@@ -321,7 +351,7 @@ pub const Hyperliquid = struct {
                 }
             }
         }
-        
+
         return orderbook;
     }
     
@@ -366,62 +396,61 @@ pub const Hyperliquid = struct {
     fn parseTrades(self: *Hyperliquid, json_data: []const u8) ![]models.Trade {
         const json = @import("../utils/json.zig");
         var parser = json.JsonParser.init(self.allocator);
-        
+
         const parsed = try parser.parse(json_data);
         const root = parsed.value;
-        
+
         var trades = std.ArrayList(models.Trade).init(self.allocator);
         defer trades.deinit();
-        
+
+        // Use Hyperliquid-specific field mappings (px for price, sz for amount)
+        const m = &self.base.field_mapping;
+
         if (parser.hasField(root, "success") and parser.getBool(root.get("success") orelse .{ .bool = false }, false)) {
             if (parser.hasField(root, "data")) {
                 const data = root.get("data") orelse return try trades.toOwnedSlice();
-                
+
                 if (parser.hasField(data, "trades")) {
                     const trades_array = parser.getArray(data.get("trades") orelse .{ .array = .{ .items = &[_]std.json.Value{} } }, null) orelse return try trades.toOwnedSlice();
-                    
+
                     for (trades_array) |trade_data| {
                         var trade = try models.Trade.init(self.allocator);
-                        
-                        // Parse trade ID
+
+                        // Parse trade ID (Hyperliquid uses "id" or "tradeId")
                         if (parser.hasField(trade_data, "id")) {
-                            trade.id = try parser.getString(trade_data.get("id") orelse .{ .string = "" }, null) orelse "trade123";
+                            trade.id = try parser.getString(trade_data.get("id") orelse .{ .string = "" }, null) orelse "";
+                        } else if (parser.hasField(trade_data, "tradeId")) {
+                            trade.id = try parser.getString(trade_data.get("tradeId") orelse .{ .string = "" }, null) orelse "";
                         }
-                        
-                        // Parse symbol
-                        if (parser.hasField(trade_data, "symbol")) {
-                            trade.symbol = try parser.getString(trade_data.get("symbol") orelse .{ .string = "" }, null) orelse "BTC/USDC";
-                        }
-                        
+
+                        // Parse symbol (Hyperliquid uses "s" for symbol)
+                        const symbol_field = parser.getString(trade_data.get(m.symbol) orelse .{ .string = "" }, null) orelse "";
+                        trade.symbol = try self.allocator.dupe(u8, if (symbol_field.len > 0) symbol_field else "BTC/USDC");
+
                         // Parse side
-                        if (parser.hasField(trade_data, "side")) {
-                            const side_str = try parser.getString(trade_data.get("side") orelse .{ .string = "" }, null) orelse "buy";
-                            trade.side = if (std.mem.eql(u8, side_str, "buy")) .buy else .sell;
-                        }
-                        
-                        // Parse price
-                        if (parser.hasField(trade_data, "price")) {
-                            trade.price = parser.getFloat(trade_data.get("price") orelse .{ .float = 0 }, 0);
-                        }
-                        
-                        // Parse amount
-                        if (parser.hasField(trade_data, "amount")) {
-                            trade.amount = parser.getFloat(trade_data.get("amount") orelse .{ .float = 0 }, 0);
-                        }
-                        
-                        // Parse timestamp
-                        if (parser.hasField(trade_data, "timestamp")) {
-                            trade.timestamp = parser.getInt(trade_data.get("timestamp") orelse .{ .integer = std.time.milliTimestamp() }, std.time.milliTimestamp());
-                        } else {
-                            trade.timestamp = std.time.milliTimestamp();
-                        }
-                        
+                        const side_str = parser.getString(trade_data.get(m.side) orelse .{ .string = "" }, null) orelse "buy";
+                        trade.side = if (std.mem.eql(u8, side_str, "buy")) .buy else .sell;
+
+                        // Parse price using Hyperliquid's "px" field
+                        trade.price = parser.getFloat(trade_data.get(m.price) orelse .{ .float = 0 }, 0);
+
+                        // Parse amount/size using Hyperliquid's "sz" field
+                        trade.amount = parser.getFloat(trade_data.get(m.amount) orelse .{ .float = 0 }, 0);
+
+                        // Parse cost (price * amount)
+                        trade.cost = trade.price * trade.amount;
+
+                        // Parse timestamp (Hyperliquid uses "time" or "timestamp")
+                        const ts_field = trade_data.get(m.timestamp) orelse trade_data.get("timestamp") orelse .{ .integer = std.time.milliTimestamp() };
+                        trade.timestamp = self.base.parseTimestamp(ts_field, std.time.milliTimestamp());
+                        trade.datetime = try self.base.parseDatetime(self.allocator, trade.timestamp);
+
                         try trades.append(trade);
                     }
                 }
             }
         }
-        
+
         return try trades.toOwnedSlice();
     }
     
@@ -465,73 +494,58 @@ pub const Hyperliquid = struct {
     fn parseOrder(self: *Hyperliquid, json_data: []const u8) !models.Order {
         const json = @import("../utils/json.zig");
         var parser = json.JsonParser.init(self.allocator);
-        
+
         const parsed = try parser.parse(json_data);
         const root = parsed.value;
-        
+
         var order = try models.Order.init(self.allocator);
-        
+
+        // Use Hyperliquid-specific field mappings (px for price, sz for amount, oid for order ID)
+        const m = &self.base.field_mapping;
+
         if (parser.hasField(root, "success") and parser.getBool(root.get("success") orelse .{ .bool = false }, false)) {
             if (parser.hasField(root, "data")) {
                 const data = root.get("data") orelse return order;
-                
-                // Parse order ID
-                if (parser.hasField(data, "orderId")) {
-                    order.id = try parser.getString(data.get("orderId") orelse .{ .string = "" }, null) orelse "order123";
-                }
-                
-                // Parse symbol
-                if (parser.hasField(data, "symbol")) {
-                    order.symbol = try parser.getString(data.get("symbol") orelse .{ .string = "" }, null) orelse "BTC/USDC";
-                }
-                
+
+                // Parse order ID (Hyperliquid uses "oid" or "orderId")
+                const order_id = parser.getString(data.get(m.order_id) orelse data.get("orderId") orelse .{ .string = "" }, null) orelse "";
+                order.id = try self.allocator.dupe(u8, if (order_id.len > 0) order_id else "");
+
+                // Parse symbol (Hyperliquid uses "s" for symbol)
+                const symbol_field = parser.getString(data.get(m.symbol) orelse .{ .string = "" }, null) orelse "";
+                order.symbol = try self.allocator.dupe(u8, if (symbol_field.len > 0) symbol_field else "BTC/USDC");
+
                 // Parse order type
-                if (parser.hasField(data, "orderType")) {
-                    const type_str = try parser.getString(data.get("orderType") orelse .{ .string = "" }, null) orelse "limit";
-                    order.type = if (std.mem.eql(u8, type_str, "market")) .market else .limit;
-                }
-                
+                const type_str = parser.getString(data.get(m.type) orelse data.get("orderType") orelse .{ .string = "" }, null) orelse "limit";
+                order.type = if (std.mem.eql(u8, type_str, "market")) .market else .limit;
+
                 // Parse side
-                if (parser.hasField(data, "side")) {
-                    const side_str = try parser.getString(data.get("side") orelse .{ .string = "" }, null) orelse "buy";
-                    order.side = if (std.mem.eql(u8, side_str, "buy")) .buy else .sell;
-                }
-                
-                // Parse price
-                if (parser.hasField(data, "price")) {
-                    order.price = parser.getFloat(data.get("price") orelse .{ .float = 0 }, 0);
-                }
-                
-                // Parse amount
-                if (parser.hasField(data, "amount")) {
-                    order.amount = parser.getFloat(data.get("amount") orelse .{ .float = 0 }, 0);
-                }
-                
-                // Parse filled amount
-                if (parser.hasField(data, "filled")) {
-                    order.filled = parser.getFloat(data.get("filled") orelse .{ .float = 0 }, 0);
-                }
-                
-                // Parse remaining amount
-                if (parser.hasField(data, "remaining")) {
-                    order.remaining = parser.getFloat(data.get("remaining") orelse .{ .float = 0 }, 0);
-                }
-                
-                // Parse status
-                if (parser.hasField(data, "status")) {
-                    const status_str = try parser.getString(data.get("status") orelse .{ .string = "" }, null) orelse "open";
-                    order.status = if (std.mem.eql(u8, status_str, "open")) .open else if (std.mem.eql(u8, status_str, "closed")) .closed else .canceled;
-                }
-                
-                // Parse timestamp
-                if (parser.hasField(data, "timestamp")) {
-                    order.timestamp = parser.getInt(data.get("timestamp") orelse .{ .integer = std.time.milliTimestamp() }, std.time.milliTimestamp());
-                } else {
-                    order.timestamp = std.time.milliTimestamp();
-                }
+                const side_str = parser.getString(data.get(m.side) orelse .{ .string = "" }, null) orelse "buy";
+                order.side = if (std.mem.eql(u8, side_str, "buy")) .buy else .sell;
+
+                // Parse price using Hyperliquid's "px" field
+                order.price = parser.getFloat(data.get(m.price) orelse .{ .float = 0 }, 0);
+
+                // Parse amount/size using Hyperliquid's "sz" field
+                order.amount = parser.getFloat(data.get(m.amount) orelse .{ .float = 0 }, 0);
+
+                // Parse filled amount using Hyperliquid's "filledSz" field
+                order.filled = parser.getFloat(data.get(m.filled) orelse data.get("filledSz") orelse .{ .float = 0 }, 0);
+
+                // Parse remaining amount using Hyperliquid's "remainingSz" field
+                order.remaining = parser.getFloat(data.get(m.remaining) orelse data.get("remainingSz") orelse .{ .float = 0 }, 0);
+
+                // Parse status (Hyperliquid uses "status")
+                const status_str = parser.getString(data.get(m.status) orelse .{ .string = "" }, null) orelse "open";
+                order.status = if (std.mem.eql(u8, status_str, "open")) .open else if (std.mem.eql(u8, status_str, "closed")) .closed else if (std.mem.eql(u8, status_str, "canceled")) .canceled else .open;
+
+                // Parse timestamp (Hyperliquid uses "time")
+                const ts_field = data.get(m.timestamp) orelse data.get("time") orelse .{ .integer = std.time.milliTimestamp() };
+                order.timestamp = self.base.parseTimestamp(ts_field, std.time.milliTimestamp());
+                order.datetime = try self.base.parseDatetime(self.allocator, order.timestamp);
             }
         }
-        
+
         return order;
     }
     

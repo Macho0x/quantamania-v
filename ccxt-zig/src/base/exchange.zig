@@ -38,6 +38,9 @@ pub const BaseExchange = struct {
     // Parser
     json_parser: json.JsonParser,
 
+    // Exchange-specific field mapping for API formats (px, sz, etc.)
+    field_mapping: types.ExchangeFieldMapping,
+
     pub fn deinit(self: *BaseExchange) void {
         if (self.markets) |m| {
             for (m) |*market| market.deinit(self.allocator);
