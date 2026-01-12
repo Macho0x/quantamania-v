@@ -32,6 +32,7 @@ pub const HTX = struct {
     api_key: ?[]const u8,
     secret_key: ?[]const u8,
     testnet: bool,
+    precision_config: precision_utils.ExchangePrecisionConfig,
     
     pub fn create(allocator: std.mem.Allocator, auth_config: auth.AuthConfig) !*HTX {
         const self = try allocator.create(HTX);
@@ -146,6 +147,8 @@ pub const HTX = struct {
         try self.base.http_client.addHeader("X-TS-API", timestamp);
     }
     
+    // Template exchange - methods return error.NotImplemented
+    // Full API implementation pending future development
     pub fn fetchMarkets(self: *HTX) ![]models.Market {
         const url = "https://api.huobi.pro/v1/common/symbols";
         
@@ -263,7 +266,7 @@ pub const HTX = struct {
         };
     }
     
-    pub fn fetchOrderBook(self: *HTX, symbol: []const u8, limit: ?usize) !models.OrderBook {
+    pub fn fetchOrderBook(self: *HTX, symbol: []const u8, limit: ?u32) !models.OrderBook {
         const limit_param = if (limit) |l| std.fmt.allocPrint(self.allocator, "&type=step1&depth={d}", .{l}) else "";
         defer if (limit_param.len > 0) self.allocator.free(limit_param);
         
@@ -324,8 +327,17 @@ pub const HTX = struct {
             .nonce = null,
         };
     }
+
+    pub fn fetchOHLCV(self: *HTX, symbol: []const u8, timeframe: []const u8, since: ?i64, limit: ?u32) ![]OHLCV {
+        _ = self;
+        _ = symbol;
+        _ = timeframe;
+        _ = since;
+        _ = limit;
+        return error.NotImplemented;
+    }
     
-    pub fn fetchTrades(self: *HTX, symbol: []const u8, since: ?i64, limit: ?usize) ![]models.Trade {
+    pub fn fetchTrades(self: *HTX, symbol: []const u8, since: ?i64, limit: ?u32) ![]models.Trade {
         const limit_param = if (limit) |l| std.fmt.allocPrint(self.allocator, "&size={d}", .{l}) else "";
         defer if (limit_param.len > 0) self.allocator.free(limit_param);
         
