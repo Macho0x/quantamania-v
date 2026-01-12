@@ -1,20 +1,25 @@
 const std = @import("std");
 const exchange = @import("../base/exchange.zig");
 const auth = @import("../base/auth.zig");
-const errors = @import("../base/errors.zig");
 const http = @import("../base/http.zig");
 const json = @import("../utils/json.zig");
 const time = @import("../utils/time.zig");
 const crypto = @import("../utils/crypto.zig");
 const precision_utils = @import("../utils/precision.zig");
+const errors = @import("../base/errors.zig");
 
 // Import models
 const Market = @import("../models/market.zig").Market;
+const MarketPrecision = @import("../models/market.zig").MarketPrecision;
 const Ticker = @import("../models/ticker.zig").Ticker;
 const OrderBook = @import("../models/orderbook.zig").OrderBook;
+const Order = @import("../models/order.zig").Order;
+const OrderType = @import("../models/order.zig").OrderType;
+const OrderSide = @import("../models/order.zig").OrderSide;
 const Balance = @import("../models/balance.zig").Balance;
 const Trade = @import("../models/trade.zig").Trade;
-const OrderBookEntry = @import("../models/orderbook.zig").OrderBookEntry;
+const OHLCV = @import("../models/ohlcv.zig").OHLCV;
+
 
 // Coinbase International Exchange Implementation
 // Coinbase International is the international variant of Coinbase
@@ -27,6 +32,7 @@ pub const CoinbaseInternational = struct {
     secret_key: ?[]const u8,
     passphrase: ?[]const u8,
     testnet: bool,
+    precision_config: precision_utils.ExchangePrecisionConfig,
 
     pub fn init(allocator: std.mem.Allocator, auth_config: auth.AuthConfig, testnet: bool) !*CoinbaseInternational {
         const self = try allocator.create(CoinbaseInternational);
@@ -35,6 +41,15 @@ pub const CoinbaseInternational = struct {
         self.secret_key = auth_config.apiSecret;
         self.passphrase = auth_config.passphrase;
         self.testnet = testnet;
+
+        // CoinbaseInternational uses decimal_places precision mode
+        self.precision_config = .{
+            .amount_mode = .decimal_places,
+            .price_mode = .decimal_places,
+            .default_amount_precision = 8,
+            .default_price_precision = 8,
+            .supports_tick_size = false,
+        };
 
         var http_client = try http.HttpClient.init(allocator);
         const base_name = try allocator.dupe(u8, "coinbaseinternational");
@@ -71,6 +86,8 @@ pub const CoinbaseInternational = struct {
         self.allocator.destroy(self);
     }
 
+    // Template exchange - methods return error.NotImplemented
+    // Full API implementation pending future development
     pub fn fetchMarkets(self: *CoinbaseInternational) ![]Market {
         _ = self;
         return error.NotImplemented;
@@ -82,14 +99,23 @@ pub const CoinbaseInternational = struct {
         return error.NotImplemented;
     }
 
-    pub fn fetchOrderBook(self: *CoinbaseInternational, symbol: []const u8, limit: ?usize) !OrderBook {
+    pub fn fetchOrderBook(self: *CoinbaseInternational, symbol: []const u8, limit: ?u32) !OrderBook {
         _ = self;
         _ = symbol;
         _ = limit;
         return error.NotImplemented;
     }
 
-    pub fn fetchTrades(self: *CoinbaseInternational, symbol: []const u8, since: ?i64, limit: ?usize) ![]Trade {
+    pub fn fetchOHLCV(self: *CoinbaseInternational, symbol: []const u8, timeframe: []const u8, since: ?i64, limit: ?u32) ![]OHLCV {
+        _ = self;
+        _ = symbol;
+        _ = timeframe;
+        _ = since;
+        _ = limit;
+        return error.NotImplemented;
+    }
+
+    pub fn fetchTrades(self: *CoinbaseInternational, symbol: []const u8, since: ?i64, limit: ?u32) ![]Trade {
         _ = self;
         _ = symbol;
         _ = since;
@@ -101,6 +127,46 @@ pub const CoinbaseInternational = struct {
         _ = self;
         return error.NotImplemented;
     }
+
+    pub fn createOrder(self: *CoinbaseInternational, symbol: []const u8, order_type: OrderType, side: OrderSide, amount: f64, price: ?f64, params: ?std.StringHashMap([]const u8)) !Order {
+        _ = self;
+        _ = symbol;
+        _ = order_type;
+        _ = side;
+        _ = amount;
+        _ = price;
+        _ = params;
+        return error.NotImplemented;
+    }
+
+    pub fn cancelOrder(self: *CoinbaseInternational, order_id: []const u8, symbol: ?[]const u8) !void {
+        _ = self;
+        _ = order_id;
+        _ = symbol;
+        return error.NotImplemented;
+    }
+
+    pub fn fetchOrder(self: *CoinbaseInternational, order_id: []const u8, symbol: ?[]const u8) !Order {
+        _ = self;
+        _ = order_id;
+        _ = symbol;
+        return error.NotImplemented;
+    }
+
+    pub fn fetchOpenOrders(self: *CoinbaseInternational, symbol: ?[]const u8) ![]Order {
+        _ = self;
+        _ = symbol;
+        return error.NotImplemented;
+    }
+
+    pub fn fetchClosedOrders(self: *CoinbaseInternational, symbol: ?[]const u8, since: ?i64, limit: ?u32) ![]Order {
+        _ = self;
+        _ = symbol;
+        _ = since;
+        _ = limit;
+        return error.NotImplemented;
+    }
+
 };
 
 pub fn create(allocator: std.mem.Allocator, auth_config: auth.AuthConfig) !*CoinbaseInternational {

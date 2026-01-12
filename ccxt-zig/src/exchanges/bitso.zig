@@ -1,9 +1,24 @@
 const std = @import("std");
-const base = @import("../base/exchange.zig");
-const json = @import("../utils/json.zig");
+const exchange = @import("../base/exchange.zig");
 const auth = @import("../base/auth.zig");
-const precision = @import("../utils/precision.zig");
+const http = @import("../base/http.zig");
+const json = @import("../utils/json.zig");
+const time = @import("../utils/time.zig");
 const crypto = @import("../utils/crypto.zig");
+const precision_utils = @import("../utils/precision.zig");
+const errors = @import("../base/errors.zig");
+
+// Import models
+const Market = @import("../models/market.zig").Market;
+const MarketPrecision = @import("../models/market.zig").MarketPrecision;
+const Ticker = @import("../models/ticker.zig").Ticker;
+const OrderBook = @import("../models/orderbook.zig").OrderBook;
+const Order = @import("../models/order.zig").Order;
+const OrderType = @import("../models/order.zig").OrderType;
+const OrderSide = @import("../models/order.zig").OrderSide;
+const Balance = @import("../models/balance.zig").Balance;
+const Trade = @import("../models/trade.zig").Trade;
+const OHLCV = @import("../models/ohlcv.zig").OHLCV;
 
 // BitSO Exchange Implementation
 // BitSO is the leading Latin American cryptocurrency exchange
@@ -60,6 +75,8 @@ pub const BitSO = struct {
         self.allocator.destroy(self);
     }
     
+    // Template exchange - methods return error.NotImplemented
+    // Full API implementation pending future development
     pub fn fetchMarkets(self: *BitSO) ![]models.Market {
         const url = "https://api.bitso.com/v3/available_books/";
         
@@ -180,7 +197,7 @@ pub const BitSO = struct {
         };
     }
     
-    pub fn fetchOrderBook(self: *BitSO, symbol: []const u8, limit: ?usize) !models.OrderBook {
+    pub fn fetchOrderBook(self: *BitSO, symbol: []const u8, limit: ?u32) !models.OrderBook {
         const limit_param = if (limit) |l| std.fmt.allocPrint(self.allocator, "&aggregate={d}", .{l}) else "";
         defer if (limit_param.len > 0) self.allocator.free(limit_param);
         
@@ -246,8 +263,17 @@ pub const BitSO = struct {
             .nonce = null,
         };
     }
+
+    pub fn fetchOHLCV(self: *BitSO, symbol: []const u8, timeframe: []const u8, since: ?i64, limit: ?u32) ![]OHLCV {
+        _ = self;
+        _ = symbol;
+        _ = timeframe;
+        _ = since;
+        _ = limit;
+        return error.NotImplemented;
+    }
     
-    pub fn fetchTrades(self: *BitSO, symbol: []const u8, since: ?i64, limit: ?usize) ![]models.Trade {
+    pub fn fetchTrades(self: *BitSO, symbol: []const u8, since: ?i64, limit: ?u32) ![]models.Trade {
         const limit_param = if (limit) |l| std.fmt.allocPrint(self.allocator, "?book={s}&limit={d}", .{ symbol, l }) else std.fmt.allocPrint(self.allocator, "?book={s}", .{symbol});
         defer self.allocator.free(limit_param);
         

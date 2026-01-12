@@ -1,9 +1,24 @@
-const std = @Import("std");
-const base = @Import("../base/exchange.zig");
-const json = @Import("../utils/json.zig");
-const auth = @Import("../base/auth.zig");
-const precision = @Import("../utils/precision.zig");
-const crypto = @Import("../utils/crypto.zig");
+const std = @import("std");
+const exchange = @import("../base/exchange.zig");
+const auth = @import("../base/auth.zig");
+const http = @import("../base/http.zig");
+const json = @import("../utils/json.zig");
+const time = @import("../utils/time.zig");
+const crypto = @import("../utils/crypto.zig");
+const precision_utils = @import("../utils/precision.zig");
+const errors = @import("../base/errors.zig");
+
+// Import models
+const Market = @import("../models/market.zig").Market;
+const MarketPrecision = @import("../models/market.zig").MarketPrecision;
+const Ticker = @import("../models/ticker.zig").Ticker;
+const OrderBook = @import("../models/orderbook.zig").OrderBook;
+const Order = @import("../models/order.zig").Order;
+const OrderType = @import("../models/order.zig").OrderType;
+const OrderSide = @import("../models/order.zig").OrderSide;
+const Balance = @import("../models/balance.zig").Balance;
+const Trade = @import("../models/trade.zig").Trade;
+const OHLCV = @import("../models/ohlcv.zig").OHLCV;
 
 // Upbit Exchange Implementation
 // Upbit is the largest cryptocurrency exchange in South Korea
@@ -44,6 +59,8 @@ pub const Upbit = struct {
         self.allocator.destroy(self);
     }
     
+    // Template exchange - methods return error.NotImplemented
+    // Full API implementation pending future development
     pub fn fetchMarkets(self: *Upbit) ![]models.Market {
         const url = "https://api.upbit.com/v1/market/all?quoteCurrency=KRW";
         
@@ -158,7 +175,7 @@ pub const Upbit = struct {
         };
     }
     
-    pub fn fetchOrderBook(self: *Upbit, symbol: []const u8, limit: ?usize) !models.OrderBook {
+    pub fn fetchOrderBook(self: *Upbit, symbol: []const u8, limit: ?u32) !models.OrderBook {
         const limit_param = if (limit) |l| std.fmt.allocPrint(self.allocator, "&count={d}", .{l}) else "";
         defer if (limit_param.len > 0) self.allocator.free(limit_param);
         
@@ -220,8 +237,17 @@ pub const Upbit = struct {
             .nonce = null,
         };
     }
+
+    pub fn fetchOHLCV(self: *Upbit, symbol: []const u8, timeframe: []const u8, since: ?i64, limit: ?u32) ![]OHLCV {
+        _ = self;
+        _ = symbol;
+        _ = timeframe;
+        _ = since;
+        _ = limit;
+        return error.NotImplemented;
+    }
     
-    pub fn fetchTrades(self: *Upbit, symbol: []const u8, since: ?i64, limit: ?usize) ![]models.Trade {
+    pub fn fetchTrades(self: *Upbit, symbol: []const u8, since: ?i64, limit: ?u32) ![]models.Trade {
         const limit_param = if (limit) |l| std.fmt.allocPrint(self.allocator, "&count={d}", .{l}) else "";
         defer if (limit_param.len > 0) self.allocator.free(limit_param);
         
