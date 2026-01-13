@@ -1,4 +1,4 @@
-# General
+# OS
 .DS_Store
 Thumbs.db
 
@@ -6,8 +6,9 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+*.swo
 
-# Zig
+# Zig build artifacts
 zig-cache/
 zig-out/
 *.o
@@ -17,11 +18,13 @@ zig-out/
 *.so
 *.dylib
 
-# V
-*.exe
-*.out
-*.tmp
-vls.log
-
-# Benchmarks / logs
+# Logs
 *.log
+
+# Temporary/backup
+*.tmp
+*.bak
+
+# Generated script outputs
+ccxt_exchanges.json
+ccxt_complete_analysis.json
