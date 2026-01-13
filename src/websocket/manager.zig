@@ -108,9 +108,7 @@ pub const WebSocketConnection = struct {
     }
 };
 
-const error = @import("../base/errors.zig");
-
-pub const WebSocketError = error.WebSocketError || error{
+pub const WebSocketError = ws.WebSocketError || error{
     MaxReconnectAttempts,
     ConnectionNotFound,
     AlreadyConnected,
