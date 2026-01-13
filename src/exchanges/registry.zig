@@ -1045,6 +1045,36 @@ pub fn createDefaultRegistry(allocator: std.mem.Allocator) !ExchangeRegistry {
         .testnet_creator = null,
     });
 
+    // ==================== DEX Exchanges ====================
+
+    try registry.register("hyperliquid", .{
+        .info = .{
+            .name = "Hyperliquid",
+            .description = "High-performance decentralized perpetuals exchange with on-chain orderbook",
+            .doc_url = "https://hyperliquid.gitbook.io/hyperliquid-docs/",
+            .version = "v1",
+            .requires_api_key = false,
+            .requires_secret = false,
+            .requires_passphrase = false,
+            .testnet_supported = true,
+            .spot_supported = false,
+            .margin_supported = false,
+            .futures_supported = true,
+        },
+        .creator = struct {
+            fn f(allocator: std.mem.Allocator, auth_config: auth.AuthConfig) anyerror!*const anyopaque {
+                const hyperliquid = @import("hyperliquid.zig");
+                return try hyperliquid.create(allocator, auth_config);
+            }
+        }.f,
+        .testnet_creator = struct {
+            fn f(allocator: std.mem.Allocator, auth_config: auth.AuthConfig) anyerror!*const anyopaque {
+                const hyperliquid = @import("hyperliquid.zig");
+                return try hyperliquid.createTestnet(allocator, auth_config);
+            }
+        }.f,
+    });
+
     // Note: Additional mid-tier CEX exchanges (bitfinex, gemini, bitget, etc.) 
     // are implemented but not yet registered. They can be added as needed following
     // the same pattern above. See src/exchanges/*.zig for implementations.
