@@ -52,6 +52,14 @@ pub const crypto = @import("utils/crypto.zig");
 pub const url = @import("utils/url.zig");
 pub const precision = @import("utils/precision.zig");
 
+// Field normalization (see docs/FIELD_MAPPER.md)
+pub const field_mapper = @import("utils/field_mapper.zig");
+
+// WebSocket support (currently a scaffold; see src/websocket/)
+pub const websocket = @import("websocket/ws.zig");
+pub const websocket_types = @import("websocket/types.zig");
+pub const websocket_manager = @import("websocket/manager.zig");
+
 // Data models
 pub const Market = @import("models/market.zig").Market;
 pub const Ticker = @import("models/ticker.zig").Ticker;
