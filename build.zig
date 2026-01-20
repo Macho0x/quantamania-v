@@ -62,6 +62,19 @@ pub fn build(b: *std.Build) void {
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_lib_unit_tests.step);
 
+    // Binance WebSocket adapter tests
+    const binance_ws_tests = b.addTest(.{
+        .name = "binance-ws-tests",
+        .root_source_file = b.path("src/websocket/adapters/binance_test.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const run_binance_ws_tests = b.addRunArtifact(binance_ws_tests);
+    const binance_ws_test_step = b.step("test-binance-ws", "Run Binance WebSocket adapter tests");
+    binance_ws_test_step.dependOn(&run_binance_ws_tests.step);
+    test_step.dependOn(&binance_ws_test_step.step);
+
     // Benchmark
     const benchmark = b.addExecutable(.{
         .name = "benchmark",
