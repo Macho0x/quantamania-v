@@ -6,6 +6,7 @@ const http = @import("../base/http.zig");
 const json = @import("../utils/json.zig");
 const time = @import("../utils/time.zig");
 const crypto = @import("../utils/crypto.zig");
+const binance_errors = @import("./errors/binance_errors.zig");
 
 // Import models
 const Market = @import("../models/market.zig").Market;

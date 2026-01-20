@@ -1,6 +1,7 @@
 const std = @import("std");
 const errors = @import("errors.zig");
 const crypto = @import("../utils/crypto.zig");
+const error_parser = @import("error_parser.zig");
 
 // HTTP Response structure
 pub const HttpResponse = struct {
@@ -319,6 +320,71 @@ pub const HttpClient = struct {
             .timing_start = 0, // Set to appropriate values if needed
             .timing_end = 0,
         };
+    }
+    
+    /// Parse error from HTTP response using error parser
+    pub fn parseErrorResponse(self: *HttpClient, response: HttpResponse, method: []const u8, url: []const u8) !errors.CCXTError {
+        var context = errors.ErrorContext.init(self.allocator);
+        defer context.deinit();
+        
+        context.request_method = try self.allocator.dupe(u8, method);
+        context.request_url = try self.allocator.dupe(u8, url);
+        context.response_status = response.status;
+        
+        // Copy response body
+        if (response.body.len > 0) {
+            context.response_body = try self.allocator.dupe(u8, response.body);
+        }
+        
+        // Extract retry-after header if present
+        var retry_after: ?u32 = null;
+        if (response.headers.get("retry-after")) |retry_header| {
+            retry_after = error_parser.parseRetryAfter(retry_header);
+        }
+        
+        return error_parser.ErrorParser.parseError(
+            self.allocator,
+            response.status,
+            response.body,
+            response.headers.toHeaders()
+        );
+    }
+    
+    /// Check if response represents an error and return appropriate error
+    pub fn checkResponseForError(self: *HttpClient, response: HttpResponse, method: []const u8, url: []const u8) !?errors.CCXTError {
+        // HTTP error status codes
+        if (response.status >= 400) {
+            return try self.parseErrorResponse(response, method, url);
+        }
+        
+        // Try to parse JSON to check for error in body (some exchanges return 200 with errors)
+        var parser = json.JsonParser.init(self.allocator);
+        defer parser.deinit();
+        
+        if (parser.parse(response.body)) |json_val| {
+            defer json_val.deinit();
+            
+            if (!error_parser.ErrorParser.isSuccessResponse(response.status, json_val)) {
+                return try self.parseErrorResponse(response, method, url);
+            }
+        } else |_| {
+            // JSON parsing failed, treat as error if status is non-200
+            if (response.status != 200) {
+                return try self.parseErrorResponse(response, method, url);
+            }
+        }
+        
+        return null;
+    }
+    
+    // Helper to convert StringHashMap to std.http.Headers for retry-after parsing
+    fn toHeaders(self: std.StringHashMap([]const u8)) std.http.Headers {
+        var headers = std.http.Headers{ .allocator = self.allocator };
+        var iterator = self.iterator();
+        while (iterator.next()) |entry| {
+            headers.append(entry.key_ptr.*, entry.value_ptr.*) catch continue;
+        }
+        return headers;
     }
     
     // Convenience methods
